@@ -41,7 +41,7 @@ steps:
     - "RGR T2 CoverPolicy": { red: completed, green: completed, refactor: completed, test-file-hash: dc7ed87139e34b7b19eb01064f9f0ba0d52fe698, test-count: 122 }
     - "RGR T3 SyncStatusResolver+Error": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 137 }
     - "RGR T4 하네스+모음집CRUD": { red: completed, green: completed, refactor: skipped, test-count: 146 }
-    - "RGR T5 캔버스 생성·갱신": pending
+    - "RGR T5 캔버스 생성·갱신": { red: completed, green: completed, refactor: completed, test-count: 159 }
     - "RGR T6 삭제+cascade": pending
     - "RGR T7 이동+조회": pending
     - "RGR T8 StatsRepository": pending
@@ -140,16 +140,21 @@ execution-log:
     result: "T3 — 사용자가 에이전트 디스패치를 거부하여 오케스트레이터가 직접 RGR 수행. Iron Law(테스트 우선)는 유지: 테스트 작성 → RED 확인 → 구현 → GREEN 확인"
   - phase: implement
     result: "T3 완료 — SyncStatusResolver + InputLimits/RepositoryError. 137개 통과(앱 47), 회귀 0건. REFACTOR 대상 없음"
+  - phase: implement
+    result: "T5 완료 — CanvasInput + createCanvas/updateCanvas + reconcileCover/canvasesFetched. 13개 추가로 159개 통과(앱 69), 회귀 0건. 소스 경고 0건"
+  - phase: implement
+    result: "T5 REFACTOR — 한계초과 제목 픽스처와 기대 에러를 한 쌍으로 묶음(길이가 어긋나면 통과해도 검증한 것이 없다). 프로덕션 정리 대상 없음"
 next-task:
-  id: T5
+  id: T6
   step: RED
-  scope: "createCanvas + updateCanvas + 표지 재계산"
-  ac: "AC-6, AC-7, AC-30, AC-32"
-  spec: ".dev/feat-data-layer/design.md §7 (LibraryRepository) — 동작 상세의 createCanvas/updateCanvas"
+  scope: "deleteCanvas + cascade(사진), deleteCollection + cascade 우회 경로"
+  ac: "AC-8, AC-9, AC-10, AC-17 / AC-16"
+  spec: ".dev/feat-data-layer/design.md §7 동작 상세의 deleteCanvas + §8(purge 철회, cascade 단독)"
   files:
     - "SoozipTests/LibraryRepositoryTests.swift (기존 파일에 추가)"
     - "Soozip/Data/Repository/LibraryRepository.swift (기존 파일에 추가)"
-  remaining: "T5 캔버스 생성·갱신 / T6 삭제+cascade / T7 이동+조회 / T8 StatsRepository / T9 앱 배선"
+  notes: "사진 픽스처는 테스트가 CanvasPhoto를 직접 insert한다 — addPhoto는 만들지 않기로 결정됨. 삭제 후 관계 배열은 save 전까지 반영되지 않으므로 fetchCount로 검증"
+  remaining: "T6 삭제+cascade / T7 이동+조회 / T8 StatsRepository / T9 앱 배선"
   after-implement: "phase-review (spec-reviewer → quality-reviewer + security-auditor) → phase-complete (verify 게이트 → 인수 → PR)"
   method: "사용자 요청으로 T3부터 에이전트 디스패치 없이 오케스트레이터가 직접 RGR 수행 중. Iron Law(실패 테스트 우선)는 유지"
   verify-command: "./scripts/test.sh  # 현재 146개 통과 (패키지 90 + 앱 56)"
