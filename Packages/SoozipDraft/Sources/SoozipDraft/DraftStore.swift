@@ -60,16 +60,24 @@ public enum DraftStoreError: Error, Equatable {
 public struct DraftStore: Sendable {
 
     public let root: URL
-    private let fm: FileManager
 
     private static let metaFile = "meta.json"
     private static let layoutFile = "layout.json"
     private static let photosDir = "photos"
 
-    public init(root: URL, fileManager: FileManager = .default) {
+    public init(root: URL) {
         self.root = root
-        self.fm = fileManager
     }
+
+    /// `FileManager`를 저장 프로퍼티로 들지 않는 이유:
+    /// corelibs-foundation(Windows)에서는 `Sendable`이지만 **Darwin에서는 아니다.**
+    /// 들고 있으면 이 구조체의 `Sendable` 선언이 macOS에서만 깨져,
+    /// Windows에서 통과한 테스트가 Mac에서 컴파일조차 되지 않는다.
+    ///
+    /// 주입 파라미터를 없앤 것은 아무도 쓰지 않았기 때문이다. 테스트 24개 전부
+    /// 임시 디렉터리 경로만 넘긴다. 정말 필요해지면 그때 프로토콜로 뺀다.
+    /// `FileManager.default`는 여러 스레드에서 호출해도 안전하다고 문서화돼 있다.
+    private var fm: FileManager { .default }
 
     // MARK: 경로
 
