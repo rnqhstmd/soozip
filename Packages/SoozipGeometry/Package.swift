@@ -14,6 +14,13 @@ let package = Package(
         .testTarget(
             name: "SoozipGeometryTests",
             dependencies: ["SoozipGeometry"]
+        ),
+        // 벤치마크는 테스트가 아니다(통과/실패가 아니라 수치를 낸다).
+        // 반드시 `swift run -c release SnapBench`로 돌린다 — debug 빌드는
+        // 수십 배 느려서 60fps 예산 판단에 쓸 수 없다.
+        .executableTarget(
+            name: "SnapBench",
+            dependencies: ["SoozipGeometry"]
         )
     ]
 )
