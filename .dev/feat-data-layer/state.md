@@ -18,7 +18,7 @@ last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
 auto-stashed: false
 config-setup-attempts: 1
 warnings-baseline: 0
-current-step: "RGR T3: RED 대기"
+current-step: "RGR T4: RED 대기"
 phases:
   setup: completed
   requirements: completed
@@ -39,7 +39,7 @@ steps:
     - 태스크 분해 승인: completed
     - "RGR T1 (AC-1~5) 모델+스키마": { red: completed, green: completed, refactor: completed, test-file-hash: d9acf17c45751d7a05879ac9d307c8dd17cfeb53 (REFACTOR 후 갱신), test-count: 113 }
     - "RGR T2 CoverPolicy": { red: completed, green: completed, refactor: completed, test-file-hash: dc7ed87139e34b7b19eb01064f9f0ba0d52fe698, test-count: 122 }
-    - "RGR T3 SyncStatusResolver+Error": pending
+    - "RGR T3 SyncStatusResolver+Error": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 137 }
     - "RGR T4 하네스+모음집CRUD": pending
     - "RGR T5 캔버스 생성·갱신": pending
     - "RGR T6 삭제+cascade": pending
@@ -136,3 +136,7 @@ execution-log:
   - phase: implement
     agent: refactor-coder (T2)
     result: "테스트 중복 1건 추출(makeCollection). 프로덕션 정리 대상 없음"
+  - phase: implement
+    result: "T3 — 사용자가 에이전트 디스패치를 거부하여 오케스트레이터가 직접 RGR 수행. Iron Law(테스트 우선)는 유지: 테스트 작성 → RED 확인 → 구현 → GREEN 확인"
+  - phase: implement
+    result: "T3 완료 — SyncStatusResolver + InputLimits/RepositoryError. 137개 통과(앱 47), 회귀 0건. REFACTOR 대상 없음"
