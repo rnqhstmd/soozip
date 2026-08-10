@@ -7,7 +7,15 @@
 
 ## 현재 상태
 
-**코드 0줄 — 설계 완료 단계.** 다음은 Phase 0(프로젝트 셋업 + 기술 스파이크 3건)입니다.
+**Phase 0 진행 중.** 기하·레이아웃·초안 저장소 3개 패키지가 완성됐고 Windows·macOS 양쪽에서 테스트 90개가 통과합니다. Xcode 앱 골격과 실기기 스파이크가 남았습니다.
+
+| 패키지 | 내용 | 테스트 |
+|---|---|---|
+| `SoozipGeometry` | 좌표 변환 · 리사이즈 · 스냅 후보 계산 | 26 |
+| `SoozipLayout` | layoutJSON v1 Codec · 폰트 5종 · 레이어 상한 | 40 |
+| `SoozipDraft` | 초안 파일 I/O · 고아 정리 | 24 |
+
+세 패키지 모두 CoreGraphics·SwiftUI에 의존하지 않아 Windows에서 `swift test`가 그대로 돕니다.
 
 ## 문서
 
