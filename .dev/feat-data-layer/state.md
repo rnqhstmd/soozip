@@ -18,7 +18,7 @@ last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
 auto-stashed: false
 config-setup-attempts: 1
 warnings-baseline: 0
-current-step: "RGR T4: RED 대기"
+current-step: "RGR T5: RED 대기"
 phases:
   setup: completed
   requirements: completed
@@ -40,7 +40,7 @@ steps:
     - "RGR T1 (AC-1~5) 모델+스키마": { red: completed, green: completed, refactor: completed, test-file-hash: d9acf17c45751d7a05879ac9d307c8dd17cfeb53 (REFACTOR 후 갱신), test-count: 113 }
     - "RGR T2 CoverPolicy": { red: completed, green: completed, refactor: completed, test-file-hash: dc7ed87139e34b7b19eb01064f9f0ba0d52fe698, test-count: 122 }
     - "RGR T3 SyncStatusResolver+Error": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 137 }
-    - "RGR T4 하네스+모음집CRUD": pending
+    - "RGR T4 하네스+모음집CRUD": { red: completed, green: completed, refactor: skipped, test-count: 146 }
     - "RGR T5 캔버스 생성·갱신": pending
     - "RGR T6 삭제+cascade": pending
     - "RGR T7 이동+조회": pending
