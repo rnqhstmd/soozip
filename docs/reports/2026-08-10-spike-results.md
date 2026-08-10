@@ -170,8 +170,13 @@ Phase 0 진행 중 확인된 사항. 플랜 Task 2에 반영했다.
 - [x] **스냅 계산 성능 실측** — 프레임 예산의 0.088%
 - [x] **폰트 5종 확정** — 혼합 서브셋 5.2MB (기준의 52%)
 
-**Phase 0 범위 밖이나 Windows에서 선행한 것**
-- [x] **layoutJSON v1 Codec** (`Packages/SoozipLayout`) — 원래 Phase 2 산출물. Foundation만 쓰므로 Mac 없이 완주했다. 레이어 5종 라운드트립, JSON 계약(v4 §8 형식 일치), 상위 버전 거부, 캔버스 밖 좌표 보존, 레이어 상한 검증 포함
+**Phase 0 범위 밖이나 Windows에서 선행한 것 — 전부 Phase 2 산출물**
+- [x] **layoutJSON v1 Codec** (`Packages/SoozipLayout`, 40 tests) — 레이어 5종 라운드트립, JSON 계약(v4 §8 형식 일치), 상위 버전 거부, 캔버스 밖 좌표 보존, 레이어 상한 검증
+- [x] **초안 파일 저장소** (`Packages/SoozipDraft`, 24 tests) — `meta.json`/`layout.json`/`photos/` I/O, 모음집당 1개 조회, 고아 정리 3조건(무소속·7일 초과·메타 손상)
+
+두 패키지 모두 **루트 경로를 주입받거나 Foundation만 쓰는 설계**라 Mac 없이 완주했다. Phase 2에 남은 것은 **승격 트랜잭션 7단계**뿐이며, SwiftData 쓰기 단계가 있어 Mac이 필요하다.
+
+`DraftStore`를 만들면서 **v4에 `meta.json`을 추가**했다. 고아 정리는 "소속 모음집이 없거나 7일 이상 방치된 폴더"를 지우는데, 폴더명(UUID)만으로는 소속을 알 수 없고 파일 mtime은 백업·복원으로 바뀌어 방치 기간의 근거가 못 된다.
 
 **구간 B (macOS)**
 - [ ] macOS에서 같은 26개 통과
