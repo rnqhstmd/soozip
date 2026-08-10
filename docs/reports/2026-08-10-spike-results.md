@@ -164,9 +164,14 @@ Phase 0 진행 중 확인된 사항. 플랜 Task 2에 반영했다.
 ## 게이트 진행 상황
 
 **구간 A (Windows)**
-- [x] `swift test` 26개 통과 (Vec2 4 + LayerFrame 6 + ResizeAnchor 7 + SnapEngine 9)
-- [x] `SoozipGeometry`에 CoreGraphics·SwiftUI import 0건 (`Foundation`만)
+- [x] `SoozipGeometry` 26개 통과 (Vec2 4 + LayerFrame 6 + ResizeAnchor 7 + SnapEngine 9)
+- [x] `SoozipLayout` 40개 통과 (AppFont 7 + Layer 14 + JSON 계약 5 + Document 14)
+- [x] 두 패키지 모두 CoreGraphics·SwiftUI import 0건 (`Foundation`만)
 - [x] **스냅 계산 성능 실측** — 프레임 예산의 0.088%
+- [x] **폰트 5종 확정** — 혼합 서브셋 5.2MB (기준의 52%)
+
+**Phase 0 범위 밖이나 Windows에서 선행한 것**
+- [x] **layoutJSON v1 Codec** (`Packages/SoozipLayout`) — 원래 Phase 2 산출물. Foundation만 쓰므로 Mac 없이 완주했다. 레이어 5종 라운드트립, JSON 계약(v4 §8 형식 일치), 상위 버전 거부, 캔버스 밖 좌표 보존, 레이어 상한 검증 포함
 
 **구간 B (macOS)**
 - [ ] macOS에서 같은 26개 통과

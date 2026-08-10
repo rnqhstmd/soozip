@@ -1062,11 +1062,14 @@ Info.plist에 추가:
 <false/>
 ```
 
-- [ ] **Step 5: 로컬 패키지 의존성 추가**
+- [ ] **Step 5: 로컬 패키지 의존성 추가 (2개)**
 
 1. Xcode → File → **Add Package Dependencies** → **Add Local...**
 2. `~/dev/soozip/Packages/SoozipGeometry` 선택
-3. TARGETS → Soozip → General → Frameworks, Libraries에 **SoozipGeometry** 추가
+3. 같은 방법으로 `~/dev/soozip/Packages/SoozipLayout` 도 추가
+4. TARGETS → Soozip → General → Frameworks, Libraries에 **SoozipGeometry**와 **SoozipLayout** 둘 다 추가
+
+`SoozipLayout`은 `SoozipGeometry`에 의존하므로 순서는 상관없다.
 
 - [ ] **Step 6: 폴더 구조 생성**
 
@@ -1505,7 +1508,9 @@ git commit -m "spike: S2 SwiftData+CloudKit 실기기 2대 동기화 검증"
 
 > **Step 1~3은 2026-08-10에 Windows에서 완료됐다.** 폰트 5종 수집·라이선스 확인·서브셋·용량 측정(**5.2MB**, 기준의 52%)·PostScript 이름 추출이 끝났다. 상세는 `docs/reports/2026-08-10-spike-results.md` S3.
 >
-> **Mac에서 남은 것은 Step 4 이후** — Info.plist 등록, 실제 iOS 로드 확인, 스파이크 정리다.
+> **`AppFont`도 이미 구현됐다** — `Packages/SoozipLayout/Sources/SoozipLayout/AppFont.swift`. `layoutJSON`의 `font` 값이라 Codec의 일부이고 Foundation만 쓰므로 앱 타깃이 아니라 패키지에 두는 것이 맞다. **아래 Step 7(최소 구현)은 건너뛴다.** 테스트도 패키지 쪽에 있다.
+>
+> **Mac에서 남은 것은 Step 4 · 5(로드 테스트) · 6 · 8 · 9~11** — Info.plist 등록, 실제 iOS 로드 확인, 스파이크 정리다.
 
 **Files:**
 - Create: `Soozip/Resources/Fonts/` (폰트 5종)
