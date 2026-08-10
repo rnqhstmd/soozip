@@ -76,7 +76,71 @@ S1은 두 축으로 나뉜다. **계산 축은 Windows에서 선검증했고, �
 
 ## S3 — 폰트 번들
 
-⬜ **보류.** 다만 통과 기준(5종 합계 10MB 이하)은 Windows에서 판정 가능하므로 조기 진행할 수 있다. Mac이 필요한 부분은 "iOS에서 로드되는가" 확인뿐이다.
+✅ **용량 판정 완료 (2026-08-10, Windows).** iOS 로드 확인만 Mac에 남았다.
+
+### S3-a. 원본 용량
+
+| 폰트 | 원본 | 출처 |
+|---|---|---|
+| GowunBatang-Regular.ttf | 8.43 MB | Google Fonts |
+| GowunDodum-Regular.ttf | 7.23 MB | Google Fonts |
+| NanumPenScript-Regular.ttf | 3.20 MB | Google Fonts |
+| Pretendard-Regular.otf | 1.57 MB | GitHub `orioncactus/pretendard` |
+| PlayfairDisplay-Regular.ttf | 0.30 MB | Google Fonts (가변, wght 400~900) |
+| **합계** | **20 MB** | 기준(10MB)의 **2배** |
+
+라이선스는 5종 전부 **SIL OFL** 확인. 원문을 `Soozip/Resources/Fonts/licenses/`에 보관했다.
+
+### S3-b. 서브셋 실측 — 한자 제거로는 안 줄어든다
+
+한자·일본어를 빼고 한글 11,172자를 유지하는 서브셋을 먼저 시도했다.
+
+| 폰트 | 원본 | 한자 제거 후 | 감소 |
+|---|---|---|---|
+| GowunBatang | 8.1 MB | 7.8 MB | **-4%** |
+| GowunDodum | 6.9 MB | 6.7 MB | **-3%** |
+| NanumPenScript | 3.1 MB | 2.0 MB | -35% |
+| Pretendard | 1.6 MB | 1.3 MB | -19% |
+| **합계 (+Playfair)** | 20 MB | **18 MB** | **-10%** |
+
+**용량의 본체는 한자가 아니라 한글 음절 11,172자 자체였다.** 계획 단계의 가정("서브셋의 실익은 CJK 한자 제거에 있다")이 실측으로 뒤집혔다.
+
+### S3-c. KS X 1001 2,350자
+
+Python `euc_kr` 코덱은 CP949 확장을 포함해 11,172자를 전부 인코딩하므로 쓸 수 없었다. **KS X 1001 한글 영역(첫 바이트 0xB0~0xC8, 둘째 0xA1~0xFE)을 바이트로 역산**해 정확히 2,350자를 얻었다(목록: `tools/fonts/ksx1001.txt`).
+
+| 폰트 | 11,172자 | 2,350자 |
+|---|---|---|
+| GowunBatang | 7.8 MB | **1.43 MB** |
+| GowunDodum | 6.7 MB | **1.23 MB** |
+| NanumPenScript | 2.0 MB | **1.19 MB** |
+| Pretendard | 1.3 MB | 0.37 MB |
+
+커버리지 21%. `가·나·다·안·녕·모·음·집·수` 등 일상 글자는 전부 포함, `뷁·힣·똠·꿹·쀓`은 누락.
+
+### S3-d. 채택안 — 혼합 (5.2 MB)
+
+| 폰트 | 한글 커버리지 | 용량 | PostScript 이름 |
+|---|---|---|---|
+| Pretendard | **11,172자 전부** | 1.29 MB | `Pretendard-Regular` |
+| 고운바탕 | KS X 1001 | 1.43 MB | `GowunBatang-Regular` |
+| 고운돋움 | KS X 1001 | 1.23 MB | `GowunDodum-Regular` |
+| 나눔손글씨 | KS X 1001 | 1.19 MB | **`NanumPen-Regular`** |
+| Playfair | — (영문) | 0.30 MB | `PlayfairDisplay-Regular` |
+| **합계** | | **5.2 MB** | 기준의 **52%** |
+
+**기본 폰트는 완전 커버, 감성 폰트만 제한**한다. Pretendard가 OTF/CFF 압축 덕에 전체 한글을 1.29MB에 담기 때문에 가능한 조합이다.
+
+### S3-e. 함정 두 가지
+
+1. **나눔손글씨의 PostScript 이름이 파일명과 다르다.** 파일은 `NanumPenScript-Regular.ttf`인데 PostScript 이름은 **`NanumPen-Regular`**다. `UIFont(name:)`은 PostScript 이름을 받으므로 계획서에 적혀 있던 값(`NanumPenScript-Regular`)으로는 **로드에 실패했을 것**이다. v4 §5.5와 플랜의 `AppFont`를 수정했다.
+2. **Playfair Display는 가변 폰트**다(wght 400~900). iOS 13+에서 정상 동작하고 P0는 Regular만 쓰므로 문제없다.
+
+### S3-f. Mac에 남은 것
+
+- [ ] `Info.plist`의 `UIAppFonts` 등록
+- [ ] `UIFont(name:)`로 5종 실제 로드 확인
+- [ ] 서브셋 후 한글 글리프 누락 없는지 렌더 확인
 
 ---
 

@@ -1503,6 +1503,10 @@ git commit -m "spike: S2 SwiftData+CloudKit 실기기 2대 동기화 검증"
 
 ### Task 9: S3 스파이크 — 폰트 번들과 스파이크 정리
 
+> **Step 1~3은 2026-08-10에 Windows에서 완료됐다.** 폰트 5종 수집·라이선스 확인·서브셋·용량 측정(**5.2MB**, 기준의 52%)·PostScript 이름 추출이 끝났다. 상세는 `docs/reports/2026-08-10-spike-results.md` S3.
+>
+> **Mac에서 남은 것은 Step 4 이후** — Info.plist 등록, 실제 iOS 로드 확인, 스파이크 정리다.
+
 **Files:**
 - Create: `Soozip/Resources/Fonts/` (폰트 5종)
 - Create: `Soozip/Core/Layout/AppFont.swift`
@@ -1645,12 +1649,14 @@ enum AppFont: String, CaseIterable, Codable {
 
     /// 실제 파일의 PostScript 이름으로 교체할 것.
     /// 확인 방법: `fc-scan --format "%{postscriptname}\n" <파일>`
+    /// 2026-08-10 실측값. `fontTools`로 추출해 확정했다.
+    /// **나눔손글씨는 파일명(NanumPenScript-Regular.ttf)과 PostScript 이름이 다르다.**
     var postScriptName: String {
         switch self {
         case .pretendard:  return "Pretendard-Regular"
         case .gowunBatang: return "GowunBatang-Regular"
         case .gowunDodum:  return "GowunDodum-Regular"
-        case .nanumPen:    return "NanumPenScript-Regular"
+        case .nanumPen:    return "NanumPen-Regular"      // ← 파일명과 다름
         case .playfair:    return "PlayfairDisplay-Regular"
         }
     }
