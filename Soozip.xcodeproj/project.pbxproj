@@ -12,11 +12,13 @@
 		1C2EBD327D3077BC5540C895 /* CoverPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA940B09932DE75C53756C1 /* CoverPolicy.swift */; };
 		2BE223D59BC6BBF99986DD42 /* S2_CloudKitProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD3130A571AEE34E51DB5A6 /* S2_CloudKitProbe.swift */; };
 		3023BF1F2CD6962E260C49BB /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = 9ADE057923A235FCC00FAFBA /* SoozipGeometry */; };
+		388CA7124B54E88DCCBF504B /* RepositoryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */; };
 		3DB80CC860CFBE5F5B0CCF95 /* NanumPenScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */; };
 		421A5F35071F3F04EE4D4077 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = EFB31317B40EE5456E1A0D35 /* SoozipLayout */; };
 		4AEDF7F8D29E708C2B2F9E16 /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = DF7F10063207E3BEA0036CB2 /* SoozipGeometry */; };
 		4DFCD319F4CD4D3F02320890 /* Collection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36C03932BBBB53963B7A0028 /* Collection.swift */; };
 		52F377FFD2CDA8C6E5697AEF /* CoverPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */; };
+		5456E7EF55AFF8AE53D6554F /* SyncStatusResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7D9AC1CC2EF951F5197E34 /* SyncStatusResolver.swift */; };
 		572A968129218382282C9B9B /* SoozipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F96E68BFCD85561EB18869 /* SoozipApp.swift */; };
 		5B99F0068346BD5AECD50B17 /* ModelSchemaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8851A91A6001CBA0F853B4F9 /* ModelSchemaTests.swift */; };
 		5D2F813532D098A2B622AF7D /* GowunBatang-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */; };
@@ -25,6 +27,7 @@
 		8D9615EC1AAC69FA4065527F /* SoozipDraft in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2A61E37526400C5A6442CA /* SoozipDraft */; };
 		9A3566FED79A6D756EB754F2 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */; };
 		9B1AFB07A695FCD5C53AED38 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = 31C34752FA1E90A63189F07A /* SoozipLayout */; };
+		B5E098B1ECE3D6811BCE29C5 /* SyncStatusResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5F8CD5A3D17A78B45FD4D9 /* SyncStatusResolverTests.swift */; };
 		B6AB98D78AEE6927DBE5953A /* FontLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */; };
 		B9EA7CC2CE9D307F4ABB5EBC /* Canvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047F9BFBF22054689F3E8B91 /* Canvas.swift */; };
 		CD538C471428789FA3051298 /* SoozipSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71E10DC58F23F315C120F6D /* SoozipSchema.swift */; };
@@ -54,17 +57,20 @@
 		3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NanumPenScript-Regular.ttf"; sourceTree = "<group>"; };
 		53EC7B8C28A7E548812BE0CA /* SoozipLayout */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipLayout; path = Packages/SoozipLayout; sourceTree = SOURCE_ROOT; };
 		54F96E68BFCD85561EB18869 /* SoozipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoozipApp.swift; sourceTree = "<group>"; };
+		5D5F8CD5A3D17A78B45FD4D9 /* SyncStatusResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusResolverTests.swift; sourceTree = "<group>"; };
 		5F2670420D877A239921F8C1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		70006E3DA1CD22EC7BC7AEE4 /* CanvasPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasPhoto.swift; sourceTree = "<group>"; };
 		8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunDodum-Regular.ttf"; sourceTree = "<group>"; };
 		8851A91A6001CBA0F853B4F9 /* ModelSchemaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSchemaTests.swift; sourceTree = "<group>"; };
 		893FCC88232C22A5A01DCE39 /* Soozip.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Soozip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FA940B09932DE75C53756C1 /* CoverPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPolicy.swift; sourceTree = "<group>"; };
+		9A7D9AC1CC2EF951F5197E34 /* SyncStatusResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusResolver.swift; sourceTree = "<group>"; };
 		A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunBatang-Regular.ttf"; sourceTree = "<group>"; };
 		AA10E531D2F2EEE0DBD3D61F /* S1_GestureProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S1_GestureProbe.swift; sourceTree = "<group>"; };
 		B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; };
 		D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPolicyTests.swift; sourceTree = "<group>"; };
 		D5656ED6249C22E3C91E7E6A /* CGInterop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInterop.swift; sourceTree = "<group>"; };
+		E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryError.swift; sourceTree = "<group>"; };
 		E71E10DC58F23F315C120F6D /* SoozipSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoozipSchema.swift; sourceTree = "<group>"; };
 		E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -137,6 +143,8 @@
 			isa = PBXGroup;
 			children = (
 				8FA940B09932DE75C53756C1 /* CoverPolicy.swift */,
+				E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */,
+				9A7D9AC1CC2EF951F5197E34 /* SyncStatusResolver.swift */,
 			);
 			path = Repository;
 			sourceTree = "<group>";
@@ -156,6 +164,7 @@
 				D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */,
 				27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */,
 				8851A91A6001CBA0F853B4F9 /* ModelSchemaTests.swift */,
+				5D5F8CD5A3D17A78B45FD4D9 /* SyncStatusResolverTests.swift */,
 			);
 			path = SoozipTests;
 			sourceTree = "<group>";
@@ -335,6 +344,7 @@
 				52F377FFD2CDA8C6E5697AEF /* CoverPolicyTests.swift in Sources */,
 				B6AB98D78AEE6927DBE5953A /* FontLoadingTests.swift in Sources */,
 				5B99F0068346BD5AECD50B17 /* ModelSchemaTests.swift in Sources */,
+				B5E098B1ECE3D6811BCE29C5 /* SyncStatusResolverTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -347,10 +357,12 @@
 				002C07C6C4214C43880C2081 /* CanvasPhoto.swift in Sources */,
 				4DFCD319F4CD4D3F02320890 /* Collection.swift in Sources */,
 				1C2EBD327D3077BC5540C895 /* CoverPolicy.swift in Sources */,
+				388CA7124B54E88DCCBF504B /* RepositoryError.swift in Sources */,
 				8764051F73D24C8DED0E9E42 /* S1_GestureProbe.swift in Sources */,
 				2BE223D59BC6BBF99986DD42 /* S2_CloudKitProbe.swift in Sources */,
 				572A968129218382282C9B9B /* SoozipApp.swift in Sources */,
 				CD538C471428789FA3051298 /* SoozipSchema.swift in Sources */,
+				5456E7EF55AFF8AE53D6554F /* SyncStatusResolver.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
