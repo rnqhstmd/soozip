@@ -4,8 +4,7 @@ import SwiftUI
 struct SoozipApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("Phase 1 대기 중")
-                .foregroundStyle(.secondary)
+            S1_GestureProbe()   // Phase 0 전용. Task 8에서 제거한다.
         }
     }
 }

@@ -15,6 +15,7 @@
 		572A968129218382282C9B9B /* SoozipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F96E68BFCD85561EB18869 /* SoozipApp.swift */; };
 		5D2F813532D098A2B622AF7D /* GowunBatang-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */; };
 		78D6BD945CF9D42F01398CE6 /* CGInterop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5656ED6249C22E3C91E7E6A /* CGInterop.swift */; };
+		8764051F73D24C8DED0E9E42 /* S1_GestureProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA10E531D2F2EEE0DBD3D61F /* S1_GestureProbe.swift */; };
 		8D9615EC1AAC69FA4065527F /* SoozipDraft in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2A61E37526400C5A6442CA /* SoozipDraft */; };
 		9A3566FED79A6D756EB754F2 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */; };
 		9B1AFB07A695FCD5C53AED38 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = 31C34752FA1E90A63189F07A /* SoozipLayout */; };
@@ -46,6 +47,7 @@
 		8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunDodum-Regular.ttf"; sourceTree = "<group>"; };
 		893FCC88232C22A5A01DCE39 /* Soozip.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Soozip.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunBatang-Regular.ttf"; sourceTree = "<group>"; };
+		AA10E531D2F2EEE0DBD3D61F /* S1_GestureProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S1_GestureProbe.swift; sourceTree = "<group>"; };
 		B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; };
 		D5656ED6249C22E3C91E7E6A /* CGInterop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInterop.swift; sourceTree = "<group>"; };
 		E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
@@ -128,8 +130,17 @@
 				AC2732A63422BF2CE5E653A9 /* App */,
 				B235CE23880FA477BFC95111 /* Core */,
 				51A9F55E37D52B5648352818 /* Resources */,
+				A73C49D1B1FB358384D135AE /* Spikes */,
 			);
 			path = Soozip;
+			sourceTree = "<group>";
+		};
+		A73C49D1B1FB358384D135AE /* Spikes */ = {
+			isa = PBXGroup;
+			children = (
+				AA10E531D2F2EEE0DBD3D61F /* S1_GestureProbe.swift */,
+			);
+			path = Spikes;
 			sourceTree = "<group>";
 		};
 		AC2732A63422BF2CE5E653A9 /* App */ = {
@@ -282,6 +293,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				78D6BD945CF9D42F01398CE6 /* CGInterop.swift in Sources */,
+				8764051F73D24C8DED0E9E42 /* S1_GestureProbe.swift in Sources */,
 				572A968129218382282C9B9B /* SoozipApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
