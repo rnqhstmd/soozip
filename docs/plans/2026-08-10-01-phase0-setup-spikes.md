@@ -76,7 +76,7 @@
 
 ---
 
-### Task 2: Swift 툴체인 설치와 SPM 패키지 스캐폴딩
+### Task 2: Swift 툴체인 설치와 SPM 패키지 스캐폴딩 ✅ 완료
 
 **Files:**
 - Create: `Packages/SoozipGeometry/Package.swift`
@@ -91,7 +91,7 @@
   - `Vec2.zero` · `Size2.zero` · `Size2.shortSide` · `Size2.longSide`
   - Task 3~5가 이 타입 위에 세워지고, Task 6의 `CGInterop`이 CoreGraphics와 잇는다.
 
-- [ ] **Step 1: Windows에 Swift 6 툴체인 설치**
+- [x] **Step 1: Windows에 Swift 6 툴체인 설치**
 
 ```powershell
 winget install --id Swift.Toolchain -e
@@ -122,7 +122,7 @@ export PATH="/c/Users/<사용자>/AppData/Local/Programs/Swift/Toolchains/6.3.3+
 export SDKROOT="$LOCALAPPDATA\\Programs\\Swift\\Platforms\\6.3.3\\Windows.platform\\Developer\\SDKs\\Windows.sdk"
 ```
 
-- [ ] **Step 2: 작업 브랜치 생성과 패키지 스캐폴딩**
+- [x] **Step 2: 작업 브랜치 생성과 패키지 스캐폴딩**
 
 ```bash
 cd /d/SQ/moumzip
@@ -154,7 +154,7 @@ let package = Package(
 
 **`platforms:`를 지정하지 않는다.** 지정하면 Apple 플랫폼 최소 버전이 박히는데, 이 패키지는 Windows에서도 빌드되어야 한다. 앱 타깃의 iOS 17 요구는 앱 쪽에서 강제된다.
 
-- [ ] **Step 3: 실패하는 테스트 작성**
+- [x] **Step 3: 실패하는 테스트 작성**
 
 `Packages/SoozipGeometry/Tests/SoozipGeometryTests/Vec2Tests.swift`:
 
@@ -187,7 +187,7 @@ import Testing
 }
 ```
 
-- [ ] **Step 4: 빈 소스 파일 생성**
+- [x] **Step 4: 빈 소스 파일 생성**
 
 **SPM은 소스 파일이 하나도 없는 타깃을 빌드 자체를 거부한다** (`target 'SoozipGeometry' is empty`). 그 상태로는 "타입을 못 찾는다"는 진짜 RED를 볼 수 없으므로, 빈 파일을 먼저 둔다.
 
@@ -198,7 +198,7 @@ import Testing
 // SPM이 소스 0개인 타깃을 거부하므로 파일만 먼저 둔다.
 ```
 
-- [ ] **Step 5: 테스트 실패 확인**
+- [x] **Step 5: 테스트 실패 확인**
 
 ```bash
 cd /d/SQ/moumzip/Packages/SoozipGeometry
@@ -207,7 +207,7 @@ swift test 2>&1 | grep -E "error:|cannot find" | head -10
 
 Expected: `cannot find 'Vec2' in scope` / `cannot find 'Size2' in scope`
 
-- [ ] **Step 6: 최소 구현**
+- [x] **Step 6: 최소 구현**
 
 `Packages/SoozipGeometry/Sources/SoozipGeometry/Vec2.swift`:
 
@@ -247,7 +247,7 @@ public struct Size2: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 7: 테스트 통과 확인**
+- [x] **Step 7: 테스트 통과 확인**
 
 ```bash
 swift test 2>&1 | tail -20
@@ -255,7 +255,7 @@ swift test 2>&1 | tail -20
 
 Expected: 4개 테스트 PASS
 
-- [ ] **Step 8: 커밋**
+- [x] **Step 8: 커밋**
 
 ```bash
 cd /d/SQ/moumzip
@@ -265,7 +265,7 @@ git commit -m "feat: SoozipGeometry 패키지 스캐폴딩 — Vec2/Size2 플랫
 
 ---
 
-### Task 3: LayerFrame — 좌표 변환
+### Task 3: LayerFrame — 좌표 변환 ✅ 완료
 
 **Files:**
 - Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/LayerFrame.swift`
@@ -282,7 +282,7 @@ git commit -m "feat: SoozipGeometry 패키지 스캐폴딩 — Vec2/Size2 플랫
   - `func corner(_ c: Corner) -> Vec2` — 회전이 적용된 월드 좌표
   - Task 4의 `ResizeAnchor`와 Task 5의 `SnapEngine`이 이 타입을 입력으로 받는다.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerFrameTests.swift`:
 
@@ -354,7 +354,7 @@ private func isClose(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 0.01 }
 }
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```bash
 cd /d/SQ/moumzip/Packages/SoozipGeometry
@@ -363,7 +363,7 @@ swift test --filter LayerFrameTests 2>&1 | tail -20
 
 Expected: 컴파일 실패 — `cannot find 'LayerFrame' in scope`
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 `Packages/SoozipGeometry/Sources/SoozipGeometry/LayerFrame.swift`:
 
@@ -432,7 +432,7 @@ public struct LayerFrame: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```bash
 swift test --filter LayerFrameTests 2>&1 | tail -20
@@ -440,7 +440,7 @@ swift test --filter LayerFrameTests 2>&1 | tail -20
 
 Expected: 6개 테스트 PASS
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 cd /d/SQ/moumzip
@@ -450,7 +450,7 @@ git commit -m "feat: LayerFrame — 회전 레이어의 로컬/월드 좌표 변
 
 ---
 
-### Task 4: ResizeAnchor — 코너·변 핸들 리사이즈
+### Task 4: ResizeAnchor — 코너·변 핸들 리사이즈 ✅ 완료
 
 **Files:**
 - Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift`
@@ -464,7 +464,7 @@ git commit -m "feat: LayerFrame — 회전 레이어의 로컬/월드 좌표 변
   - `func resized(draggingEdge: Edge, to worldPoint: Vec2, minShortSide: Double, maxLongSide: Double) -> LayerFrame` — 한 축만
   - Phase 3의 선택 UI가 이 두 함수를 호출한다.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `Packages/SoozipGeometry/Tests/SoozipGeometryTests/ResizeAnchorTests.swift`:
 
@@ -567,7 +567,7 @@ private let maxSide: Double = 7680   // 캔버스 긴 변 1920 × 4
 }
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```bash
 cd /d/SQ/moumzip/Packages/SoozipGeometry
@@ -576,7 +576,7 @@ swift test --filter ResizeAnchorTests 2>&1 | tail -20
 
 Expected: 컴파일 실패 — `value of type 'LayerFrame' has no member 'resized'`
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 `Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift`:
 
@@ -703,7 +703,7 @@ extension LayerFrame {
 }
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```bash
 swift test --filter ResizeAnchorTests 2>&1 | tail -20
@@ -713,7 +713,7 @@ Expected: 7개 테스트 PASS
 
 실패하면 **테스트가 맞다고 가정하고 구현을 고친다.** 특히 회전 케이스에서 고정점이 어긋나면 마지막 보정 로직을 점검한다.
 
-- [ ] **Step 5: 커밋**
+- [x] **Step 5: 커밋**
 
 ```bash
 cd /d/SQ/moumzip
@@ -723,7 +723,7 @@ git commit -m "feat: ResizeAnchor — 코너/변 핸들 리사이즈, 대각 고
 
 ---
 
-### Task 5: SnapEngine — 정렬·균등 간격·크기 일치
+### Task 5: SnapEngine — 정렬·균등 간격·크기 일치 ✅ 완료
 
 **Files:**
 - Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/SnapEngine.swift`
@@ -738,7 +738,7 @@ git commit -m "feat: ResizeAnchor — 코너/변 핸들 리사이즈, 대각 고
   - `func snapCandidates(for moving: LayerFrame, among others: [LayerFrame], canvasSize: Size2, threshold: Double) -> [SnapCandidate]`
   - Phase 4의 가이드 오버레이와 햅틱이 이 결과를 소비한다.
 
-- [ ] **Step 1: 실패하는 테스트 작성**
+- [x] **Step 1: 실패하는 테스트 작성**
 
 `Packages/SoozipGeometry/Tests/SoozipGeometryTests/SnapEngineTests.swift`:
 
@@ -835,7 +835,7 @@ private func frame(x: Double, y: Double,
 }
 ```
 
-- [ ] **Step 2: 테스트 실패 확인**
+- [x] **Step 2: 테스트 실패 확인**
 
 ```bash
 cd /d/SQ/moumzip/Packages/SoozipGeometry
@@ -844,7 +844,7 @@ swift test --filter SnapEngineTests 2>&1 | tail -20
 
 Expected: 컴파일 실패 — `cannot find 'snapCandidates' in scope`
 
-- [ ] **Step 3: 최소 구현**
+- [x] **Step 3: 최소 구현**
 
 `Packages/SoozipGeometry/Sources/SoozipGeometry/SnapEngine.swift`:
 
@@ -966,7 +966,7 @@ public func snapCandidates(for moving: LayerFrame,
 }
 ```
 
-- [ ] **Step 4: 테스트 통과 확인**
+- [x] **Step 4: 테스트 통과 확인**
 
 ```bash
 swift test --filter SnapEngineTests 2>&1 | tail -20
@@ -974,7 +974,7 @@ swift test --filter SnapEngineTests 2>&1 | tail -20
 
 Expected: 9개 테스트 PASS
 
-- [ ] **Step 5: 전체 테스트 실행**
+- [x] **Step 5: 전체 테스트 실행**
 
 ```bash
 swift test 2>&1 | tail -20
@@ -982,7 +982,7 @@ swift test 2>&1 | tail -20
 
 Expected: **26개 테스트 전부 PASS** (Vec2 4 + LayerFrame 6 + ResizeAnchor 7 + SnapEngine 9)
 
-- [ ] **Step 6: 커밋 및 푸시**
+- [x] **Step 6: 커밋 및 푸시**
 
 ```bash
 cd /d/SQ/moumzip
