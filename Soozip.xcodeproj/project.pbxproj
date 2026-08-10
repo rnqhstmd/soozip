@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A62890829577BC2C0158FD /* CGInteropTests.swift */; };
+		2BE223D59BC6BBF99986DD42 /* S2_CloudKitProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD3130A571AEE34E51DB5A6 /* S2_CloudKitProbe.swift */; };
 		3023BF1F2CD6962E260C49BB /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = 9ADE057923A235FCC00FAFBA /* SoozipGeometry */; };
 		3DB80CC860CFBE5F5B0CCF95 /* NanumPenScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */; };
 		421A5F35071F3F04EE4D4077 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = EFB31317B40EE5456E1A0D35 /* SoozipLayout */; };
@@ -36,6 +37,7 @@
 
 /* Begin PBXFileReference section */
 		06B1A807982B0DC783808F05 /* SoozipDraft */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipDraft; path = Packages/SoozipDraft; sourceTree = SOURCE_ROOT; };
+		1BD3130A571AEE34E51DB5A6 /* S2_CloudKitProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = S2_CloudKitProbe.swift; sourceTree = "<group>"; };
 		1D1524DCC8B0813DCD775094 /* SoozipTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SoozipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		27A62890829577BC2C0158FD /* CGInteropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInteropTests.swift; sourceTree = "<group>"; };
 		27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontLoadingTests.swift; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				AA10E531D2F2EEE0DBD3D61F /* S1_GestureProbe.swift */,
+				1BD3130A571AEE34E51DB5A6 /* S2_CloudKitProbe.swift */,
 			);
 			path = Spikes;
 			sourceTree = "<group>";
@@ -294,6 +297,7 @@
 			files = (
 				78D6BD945CF9D42F01398CE6 /* CGInterop.swift in Sources */,
 				8764051F73D24C8DED0E9E42 /* S1_GestureProbe.swift in Sources */,
+				2BE223D59BC6BBF99986DD42 /* S2_CloudKitProbe.swift in Sources */,
 				572A968129218382282C9B9B /* SoozipApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
