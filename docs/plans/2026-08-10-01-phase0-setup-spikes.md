@@ -105,6 +105,23 @@ swift --version
 
 Expected: `Swift version 6.x` 출력. 버전이 안 나오면 PATH가 반영되지 않은 것이므로 터미널을 다시 연다.
 
+> **실측 (2026-08-10):** Swift 6.3.3 설치됨. Visual Studio Build Tools 2022 + MSVC 14.44 + Windows SDK 10.0.26100이 이미 있어 추가 설치는 없었다. Python 3.10.11이 의존성으로 함께 깔린다.
+
+#### 기존 셸에서 실행할 때 (환경변수 두 개)
+
+설치 직후의 셸이나 Git Bash에서는 시스템 환경변수가 반영되지 않아 두 가지가 필요하다. **새 터미널을 열면 불필요하다.**
+
+```bash
+# 1) PATH — Git Bash에서는 $LOCALAPPDATA가 'C:\...' 형식이라
+#    PATH에 그대로 이어붙이면 'C:' 뒤 콜론이 구분자로 오인된다. Unix 경로를 쓴다.
+export PATH="/c/Users/<사용자>/AppData/Local/Programs/Swift/Toolchains/6.3.3+Asserts/usr/bin:/c/Users/<사용자>/AppData/Local/Programs/Swift/Runtimes/6.3.3/usr/bin:$PATH"
+
+# 2) SDKROOT — 없으면 "unable to load standard library for target
+#    'x86_64-unknown-windows-msvc'"로 매니페스트 컴파일부터 실패한다.
+#    swiftc는 Windows 프로그램이므로 이쪽은 Windows 경로 형식으로 준다.
+export SDKROOT="$LOCALAPPDATA\\Programs\\Swift\\Platforms\\6.3.3\\Windows.platform\\Developer\\SDKs\\Windows.sdk"
+```
+
 - [ ] **Step 2: 작업 브랜치 생성과 패키지 스캐폴딩**
 
 ```bash
@@ -170,16 +187,27 @@ import Testing
 }
 ```
 
-- [ ] **Step 4: 테스트 실패 확인**
+- [ ] **Step 4: 빈 소스 파일 생성**
+
+**SPM은 소스 파일이 하나도 없는 타깃을 빌드 자체를 거부한다** (`target 'SoozipGeometry' is empty`). 그 상태로는 "타입을 못 찾는다"는 진짜 RED를 볼 수 없으므로, 빈 파일을 먼저 둔다.
+
+`Packages/SoozipGeometry/Sources/SoozipGeometry/Vec2.swift`:
+
+```swift
+// RED 단계: 아직 비어 있다.
+// SPM이 소스 0개인 타깃을 거부하므로 파일만 먼저 둔다.
+```
+
+- [ ] **Step 5: 테스트 실패 확인**
 
 ```bash
 cd /d/SQ/moumzip/Packages/SoozipGeometry
-swift test 2>&1 | tail -20
+swift test 2>&1 | grep -E "error:|cannot find" | head -10
 ```
 
-Expected: 컴파일 실패 — `cannot find 'Vec2' in scope`
+Expected: `cannot find 'Vec2' in scope` / `cannot find 'Size2' in scope`
 
-- [ ] **Step 5: 최소 구현**
+- [ ] **Step 6: 최소 구현**
 
 `Packages/SoozipGeometry/Sources/SoozipGeometry/Vec2.swift`:
 
@@ -219,7 +247,7 @@ public struct Size2: Equatable, Sendable {
 }
 ```
 
-- [ ] **Step 6: 테스트 통과 확인**
+- [ ] **Step 7: 테스트 통과 확인**
 
 ```bash
 swift test 2>&1 | tail -20
@@ -227,7 +255,7 @@ swift test 2>&1 | tail -20
 
 Expected: 4개 테스트 PASS
 
-- [ ] **Step 7: 커밋**
+- [ ] **Step 8: 커밋**
 
 ```bash
 cd /d/SQ/moumzip
