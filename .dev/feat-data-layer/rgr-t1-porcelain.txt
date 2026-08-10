@@ -1,0 +1,11 @@
+ M Soozip.xcodeproj/project.pbxproj
+ M context/canvas/PROJECTS.md
+ M context/collection/PROJECTS.md
+ M context/editor/PROJECTS.md
+ M context/media/PROJECTS.md
+ M context/profile/PROJECTS.md
+ M context/sync/PROJECTS.md
+?? .claude/
+?? .dev/
+?? SoozipTests/ModelSchemaTests.swift
+?? scripts/
