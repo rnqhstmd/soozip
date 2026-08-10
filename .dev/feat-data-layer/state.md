@@ -1,0 +1,129 @@
+phase: implement
+status: in_progress
+pipeline: gx-tdd
+verify-status: pending
+verify-fingerprint: ""
+model-profile: standard
+mode: all
+intent-source: user-selection
+vcs-type: git
+branch: feat/data-layer
+base: main
+project-type: swift-ios
+project-root: ./
+args: "phase1 구현 시작 — 데이터 레이어 (Collection · Canvas · CanvasPhoto + 리포지토리)"
+flags: ""
+started: 2026-08-10T22:40:00
+last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
+auto-stashed: false
+config-setup-attempts: 1
+warnings-baseline: 0
+current-step: "RGR T2: RED 대기"
+phases:
+  setup: completed
+  requirements: completed
+  design: completed
+  implement: in_progress
+  review: pending
+  complete: pending
+steps:
+  requirements:
+    - PRD 작성: completed
+    - G-W-T 게이트: completed
+  design:
+    - 설계 초안: completed
+    - 비판 검토: completed
+    - testability 평가: completed (8/10 PASS)
+  implement:
+    - 기준선 게이트: completed
+    - 태스크 분해 승인: completed
+    - "RGR T1 (AC-1~5) 모델+스키마": { red: completed, green: completed, refactor: completed, test-file-hash: 8705e19496e6251b49bd1cd50d4dca24a0842a2a, test-count: 113 }
+    - "RGR T2 CoverPolicy": pending
+    - "RGR T3 SyncStatusResolver+Error": pending
+    - "RGR T4 하네스+모음집CRUD": pending
+    - "RGR T5 캔버스 생성·갱신": pending
+    - "RGR T6 삭제+cascade": pending
+    - "RGR T7 이동+조회": pending
+    - "RGR T8 StatsRepository": pending
+    - "RGR T9 앱 배선": pending
+    - 변경사항 수집: pending
+  review:
+    - mechanical-gate: pending
+    - spec-review (1단계): pending
+    - quality-review + security (2단계 병렬): pending
+  complete:
+    - verify-gate: pending
+    - 인수검증: pending
+execution-log:
+  - phase: setup
+    result: "베이스 main (단일 후보 자동 선택), 브랜치 feat/data-layer 생성"
+  - phase: setup
+    result: "프로젝트 타입 swift-ios — project.yml이 힌트 카탈로그의 Ceedling과 충돌해 인라인 등록으로 해결"
+  - phase: setup
+    result: "context/*/PROJECTS.md 6개의 낡은 레포 경로(D:\\SQ\\moumzip) 갱신 — 도메인 컨텍스트 매칭 복구"
+  - phase: setup
+    result: "도메인 컨텍스트 로드: sync(모델·CloudKit 제약·충돌 정책) · collection · canvas"
+  - phase: requirements
+    agent: product-owner
+    result: "PRD 초안 — AC 30건 전부 G-W-T. 확인 사항 5건 제시"
+  - phase: requirements
+    decision: "sortIndex = 기존 최댓값+1 (재배치 전에도 생성 순서 보장)"
+  - phase: requirements
+    decision: "연속 기록 = 오늘 저장이 없어도 어제까지 이어진 연속 유지"
+  - phase: requirements
+    decision: "가장 많이 담은 모음집 동률 = createdAt 오름차순(먼저 생성된 쪽)"
+  - phase: requirements
+    decision: "이름 1~20자·제목 0~40자를 리포지토리가 강제 거부 (UI 이전의 최후 방어선)"
+  - phase: requirements
+    decision: "로컬 모드 격하 = 미로그인/용량초과 통합 판정 하나로"
+  - phase: requirements
+    gate: G-W-T
+    result: "PASS — AC 32건 전부 Given/When/Then 3절 + 구체 검증값, 모호 표현 0건"
+  - phase: requirements
+    result: "FR-8 문구 오류 정정 — '소속 모음집의 사진' → '그 캔버스에 속한 사진' (AC-17과 어긋나 있었음)"
+  - phase: requirements
+    result: "PRD 사용자 승인 완료. .dev/feat-data-layer/prd.md 저장"
+  - phase: implement
+    agent: architect
+    result: "설계 초안 — 규모 대형. 신규 15파일(모델 4·리포지토리 5·테스트 6), 구현 순서 13단계. 확인 사항 4건"
+  - phase: implement
+    decision: "타입 이름 Collection/Canvas 유지 — 타입명이 곧 CloudKit 레코드 타입명이라 심사 후 개명 불가. 문서·코드 일치 우선"
+  - phase: implement
+    decision: "동시성 경계 = @MainActor struct — Phase 6 @Query와 마찰 없음. Phase 2 승격만 나중에 @ModelActor로 분리"
+  - phase: implement
+    decision: "리포지토리 = LibraryRepository 단일 + StatsRepository 분리 — 표지 불변식을 한 타입에 가둔다(QE-2)"
+  - phase: implement
+    decision: "연속 기록 미래 날짜 = BR-9 문언대로 포함 — streakDays()가 now를 참조하지 않아 실행 시점 독립"
+  - phase: implement
+    agent: design-critic
+    result: "MUST-ADDRESS 5 / CONSIDER 6. 프로브 실행으로 검증 — QE-2 사고를 saveCanvas 업서트로 실측 재현. 근본 원인을 '불변식 미선언'으로 재정의"
+  - phase: implement
+    agent: test-architect
+    result: "Testability 8/10 ✅ PASS. AC 커버리지 누락 4건(AC-4·AC-5·AC-12·QE-2). 구현 착수 전 반영 조건 5건"
+  - phase: implement
+    gate: testability
+    result: "PASS (8/10 ≥ 7) — Iron Law 통과"
+  - phase: implement
+    result: "실측 반증 3건 — ①cascade 단독 동작함(purge 존치 근거 무효) ②isDeleted는 save 후 false로 복귀(fetchCount 필수) ③ModelContext는 autosave 켜져 있음"
+  - phase: implement
+    decision: "연속 기록 결정 번복 — streakDays(now:)로 변경. 미래 날짜 제외 + 유예 1일. BR-9 개정, AC-25a·25b 신설"
+  - phase: implement
+    decision: "AC-12 전제 개정 — A에 표지 C4 + 비표지 C3 두 장. 원안은 FR-7과 모순이라 테스트 작성 불가였음"
+  - phase: implement
+    result: "경고 기준선 측정 — 앱 0건, 패키지 3종 0건. RGR 진입 전 baseline 확보"
+  - phase: implement
+    agent: architect
+    result: "설계 최종본 — MUST-ADDRESS 5·CONSIDER 6·testability 조건 5 전부 반영. purge 철회(cascade 단독), saveCanvas 3분할, streakDays(now:), 불변식 자동 검증. 구현 15단계"
+  - phase: implement
+    result: "design-draft.md 삭제 — design.md 단일 출처 유지 (반증된 초안 가정은 design.md에 기록됨)"
+  - phase: design
+    result: "설계 사용자 승인 완료. design.md 저장 (신규 15·수정 3파일, 15단계, Testability 8/10)"
+  - phase: implement
+    agent: red-writer (T1)
+    result: "ModelSchemaTests 14개 작성 + RED 확인(cannot find in scope). 격리 준수 — 프로덕션 Read 0건"
+  - phase: implement
+    agent: green-coder (T1)
+    result: "모델 3종 + SoozipSchema 최소 구현. 앱 배선은 YAGNI로 T9 이월. 113개 통과, 회귀 0건"
+  - phase: implement
+    agent: refactor-coder (T1)
+    result: "테스트 중복 2건 추출(soozipSchema/makeInMemoryContext). 프로덕션 정리 대상 없음. GREEN 유지 113개"

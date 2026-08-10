@@ -2,7 +2,4 @@
 
 | 레포 | 역할 | 담당 |
 |------|------|------|
-| `D:\SQ\moumzip` | iOS 앱 본체 (git 미초기화 — 로컬 폴더) | 본승 |
-
-> **주의:** 이 레포는 git 저장소가 아니어서 커밋 이력이 없습니다.
-> 코드 그래프 갱신이 필요하면 `graphify update D:\SQ\moumzip`을 수동 실행합니다.
+| [`rnqhstmd/soozip`](https://github.com/rnqhstmd/soozip) | iOS 앱 본체 | 본승 |
