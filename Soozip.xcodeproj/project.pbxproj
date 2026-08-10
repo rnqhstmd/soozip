@@ -9,12 +9,18 @@
 /* Begin PBXBuildFile section */
 		19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A62890829577BC2C0158FD /* CGInteropTests.swift */; };
 		3023BF1F2CD6962E260C49BB /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = 9ADE057923A235FCC00FAFBA /* SoozipGeometry */; };
+		3DB80CC860CFBE5F5B0CCF95 /* NanumPenScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */; };
 		421A5F35071F3F04EE4D4077 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = EFB31317B40EE5456E1A0D35 /* SoozipLayout */; };
 		4AEDF7F8D29E708C2B2F9E16 /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = DF7F10063207E3BEA0036CB2 /* SoozipGeometry */; };
 		572A968129218382282C9B9B /* SoozipApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F96E68BFCD85561EB18869 /* SoozipApp.swift */; };
+		5D2F813532D098A2B622AF7D /* GowunBatang-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */; };
 		78D6BD945CF9D42F01398CE6 /* CGInterop.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5656ED6249C22E3C91E7E6A /* CGInterop.swift */; };
 		8D9615EC1AAC69FA4065527F /* SoozipDraft in Frameworks */ = {isa = PBXBuildFile; productRef = 9E2A61E37526400C5A6442CA /* SoozipDraft */; };
+		9A3566FED79A6D756EB754F2 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */; };
 		9B1AFB07A695FCD5C53AED38 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = 31C34752FA1E90A63189F07A /* SoozipLayout */; };
+		B6AB98D78AEE6927DBE5953A /* FontLoadingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */; };
+		E7D7E7098AF8FF5AA5E1C603 /* GowunDodum-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */; };
+		FF2AF15908FD92988858E085 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,12 +37,18 @@
 		06B1A807982B0DC783808F05 /* SoozipDraft */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipDraft; path = Packages/SoozipDraft; sourceTree = SOURCE_ROOT; };
 		1D1524DCC8B0813DCD775094 /* SoozipTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = SoozipTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		27A62890829577BC2C0158FD /* CGInteropTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInteropTests.swift; sourceTree = "<group>"; };
+		27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FontLoadingTests.swift; sourceTree = "<group>"; };
 		386878385B375CB1CCBF7535 /* SoozipGeometry */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipGeometry; path = Packages/SoozipGeometry; sourceTree = SOURCE_ROOT; };
+		3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NanumPenScript-Regular.ttf"; sourceTree = "<group>"; };
 		53EC7B8C28A7E548812BE0CA /* SoozipLayout */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipLayout; path = Packages/SoozipLayout; sourceTree = SOURCE_ROOT; };
 		54F96E68BFCD85561EB18869 /* SoozipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoozipApp.swift; sourceTree = "<group>"; };
 		5F2670420D877A239921F8C1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunDodum-Regular.ttf"; sourceTree = "<group>"; };
 		893FCC88232C22A5A01DCE39 /* Soozip.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Soozip.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunBatang-Regular.ttf"; sourceTree = "<group>"; };
+		B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; };
 		D5656ED6249C22E3C91E7E6A /* CGInterop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInterop.swift; sourceTree = "<group>"; };
+		E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +74,26 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		343F03C53E1F28347D14B815 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				A66D7F14ACAA787434F8F755 /* GowunBatang-Regular.ttf */,
+				8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */,
+				3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */,
+				B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */,
+				E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		51A9F55E37D52B5648352818 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				343F03C53E1F28347D14B815 /* Fonts */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
 		6398BBAF669839C93EED377A /* Packages */ = {
 			isa = PBXGroup;
 			children = (
@@ -84,6 +116,7 @@
 			isa = PBXGroup;
 			children = (
 				27A62890829577BC2C0158FD /* CGInteropTests.swift */,
+				27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */,
 			);
 			path = SoozipTests;
 			sourceTree = "<group>";
@@ -94,6 +127,7 @@
 				5F2670420D877A239921F8C1 /* Info.plist */,
 				AC2732A63422BF2CE5E653A9 /* App */,
 				B235CE23880FA477BFC95111 /* Core */,
+				51A9F55E37D52B5648352818 /* Resources */,
 			);
 			path = Soozip;
 			sourceTree = "<group>";
@@ -162,6 +196,7 @@
 			buildConfigurationList = 02EB68362111579238B396BB /* Build configuration list for PBXNativeTarget "Soozip" */;
 			buildPhases = (
 				C66434823031B6E048C4F60A /* Sources */,
+				A4A82609DA83DD008441F488 /* Resources */,
 				12BA1323EEEF465222D1A290 /* Frameworks */,
 			);
 			buildRules = (
@@ -217,12 +252,28 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		A4A82609DA83DD008441F488 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D2F813532D098A2B622AF7D /* GowunBatang-Regular.ttf in Resources */,
+				E7D7E7098AF8FF5AA5E1C603 /* GowunDodum-Regular.ttf in Resources */,
+				3DB80CC860CFBE5F5B0CCF95 /* NanumPenScript-Regular.ttf in Resources */,
+				FF2AF15908FD92988858E085 /* PlayfairDisplay-Regular.ttf in Resources */,
+				9A3566FED79A6D756EB754F2 /* Pretendard-Regular.otf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		77870B8B5343C8F4506F63CE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */,
+				B6AB98D78AEE6927DBE5953A /* FontLoadingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

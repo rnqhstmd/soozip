@@ -33,10 +33,10 @@ targets:
     platform: iOS
     sources:
       - path: Soozip
-        # 폰트는 Phase 0 Task 5에서 편입한다. 지금 넣으면 폰트 로드 테스트가
-        # 처음부터 통과해 버려서 "테스트가 실제로 누락을 잡는가"를 확인할 수 없다.
         excludes:
-          - "Resources/**"
+          # 라이선스 원문은 번들에 넣지 않는다. Phase 9의 설정 > 정보 화면에서
+          # 고지할 때 다시 다룬다 — 지금 넣으면 앱 용량만 늘린다.
+          - "Resources/Fonts/licenses/**"
     dependencies:
       - package: SoozipGeometry
       - package: SoozipLayout
@@ -67,6 +67,15 @@ targets:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        # 번들 폰트 5종, 합계 5.2MB (v4 §5.5). 여기 적는 것은 **파일명**이고
+        # UIFont(name:)에 넘기는 것은 PostScript 이름이다 — 나눔손글씨만 둘이
+        # 다르다(NanumPenScript-Regular.ttf / NanumPen-Regular).
+        UIAppFonts:
+          - Pretendard-Regular.otf
+          - GowunBatang-Regular.ttf
+          - GowunDodum-Regular.ttf
+          - NanumPenScript-Regular.ttf
+          - PlayfairDisplay-Regular.ttf
 
   SoozipTests:
     type: bundle.unit-test

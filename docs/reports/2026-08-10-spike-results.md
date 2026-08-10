@@ -1,7 +1,7 @@
 # Phase 0 스파이크 실측 결과
 
 - 작성일: 2026-08-10
-- 관련 계획: `docs/plans/2026-08-10-01-phase0-setup-spikes.md`
+- 관련 계획: `docs/plans/2026-08-10-01-phase0-setup-spikes.md` (구간 A) · `docs/plans/2026-08-10-02-phase0-macos.md` (구간 B)
 - 관련 설계: `docs/specs/2026-08-10-moumzip-mvp-design-v4.md`
 
 이 문서는 **실측 수치만** 기록한다. "잘 동작함" 같은 서술은 쓰지 않는다.
@@ -15,10 +15,10 @@ S1은 두 축으로 나뉜다. **계산 축은 Windows에서 선검증했고, �
 | 축 | 상태 | 측정 위치 |
 |---|---|---|
 | 스냅 계산 비용 | ✅ **측정 완료** | Windows x86_64 (아래) |
-| SwiftUI 렌더링 · 제스처 응답 | ⬜ 보류 | 실기기 (Task 7) |
+| SwiftUI 렌더링 · 제스처 응답 | ⬜ 보류 | 실기기 (구간 B Task 6) |
 | 회전 리사이즈 대각 고정 | ✅ **단위 테스트 통과** | Windows (Task 4) |
-| 핸들 히트 영역 44pt | ⬜ 보류 | 실기기 (Task 7) |
-| 제스처 배타 처리 | ⬜ 보류 | 실기기 (Task 7) |
+| 핸들 히트 영역 44pt | ⬜ 보류 | 실기기 (구간 B Task 6) |
+| 제스처 배타 처리 | ⬜ 보류 | 실기기 (구간 B Task 6) |
 
 ### S1-a. 스냅 계산 비용 (2026-08-10 측정)
 
@@ -76,7 +76,7 @@ S1은 두 축으로 나뉜다. **계산 축은 Windows에서 선검증했고, �
 
 ## S3 — 폰트 번들
 
-✅ **용량 판정 완료 (2026-08-10, Windows).** iOS 로드 확인만 Mac에 남았다.
+✅ **종료 (2026-08-10).** 용량 판정은 Windows에서, iOS 로드 확인은 macOS에서 끝냈다.
 
 ### S3-a. 원본 용량
 
@@ -136,11 +136,17 @@ Python `euc_kr` 코덱은 CP949 확장을 포함해 11,172자를 전부 인코�
 1. **나눔손글씨의 PostScript 이름이 파일명과 다르다.** 파일은 `NanumPenScript-Regular.ttf`인데 PostScript 이름은 **`NanumPen-Regular`**다. `UIFont(name:)`은 PostScript 이름을 받으므로 계획서에 적혀 있던 값(`NanumPenScript-Regular`)으로는 **로드에 실패했을 것**이다. v4 §5.5와 플랜의 `AppFont`를 수정했다.
 2. **Playfair Display는 가변 폰트**다(wght 400~900). iOS 13+에서 정상 동작하고 P0는 Regular만 쓰므로 문제없다.
 
-### S3-f. Mac에 남은 것
+### S3-f. Mac 확인 완료 (2026-08-10)
 
-- [ ] `Info.plist`의 `UIAppFonts` 등록
-- [ ] `UIFont(name:)`로 5종 실제 로드 확인
-- [ ] 서브셋 후 한글 글리프 누락 없는지 렌더 확인
+- [x] `Info.plist`의 `UIAppFonts` 등록 — `project.yml`에서 생성
+- [x] `UIFont(name:)`로 5종 실제 로드 확인 — iPhone 17 시뮬레이터, `SoozipTests/FontLoadingTests` 6개 통과
+- [x] 서브셋 후 한글 글리프 누락 없는지 렌더 확인
+
+**PostScript 이름 함정을 테스트로 고정했다.** `UIFont(name: "NanumPen-Regular")`는 로드되고 `UIFont(name: "NanumPenScript-Regular")`(파일명)는 `nil`이라는 것을 둘 다 단언한다. 파일명으로 부르면 조용히 실패하는 종류라 회귀를 눈으로 잡을 수 없다.
+
+**희귀 음절 폴백도 확인했다.** KS X 1001에 없는 `뷁힣똠`을 고운바탕으로 그려도 폭이 0이 아니다 — 글자가 사라지지 않고 시스템 폰트로 폴백해 폰트만 섞여 보인다(v4 §5.5가 의도한 동작).
+
+**S3 종료.** 폰트 5종 5.2MB, 기준(10MB)의 52%.
 
 ---
 
@@ -213,7 +219,7 @@ Windows에서 통과한 패키지를 macOS(Apple M2 / macOS 26.3 / Swift 6.3.3 /
 
 **구간 B (macOS)**
 - [x] macOS에서 같은 26개 통과 — 플랫폼 의존 누수 2건 수정 후. `SoozipLayout` 40 · `SoozipDraft` 24를 더해 **90개**
-- [ ] `xcodebuild test` 앱 테스트 9개 통과 (CGInterop 3 + 폰트 6) — *로드맵의 "6개"는 `AppFont`가 앱 타깃에 있을 때의 계산이었다*
+- [x] `xcodebuild test` 앱 테스트 **9개 통과** (CGInterop 3 + 폰트 6) — *로드맵의 "6개"는 `AppFont`가 앱 타깃에 있을 때의 계산이었다*
 - [ ] S1 실기기 4개 기준 실측
 - [ ] S2 초안 미동기화 확인
-- [ ] S3 폰트 용량 확인
+- [x] S3 폰트 용량 확인 — 5.2MB, 로드·글리프 확인 완료
