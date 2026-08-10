@@ -1,11 +1,15 @@
 // swift-tools-version: 6.0
 import PackageDescription
 
-// platforms를 지정하지 않는다. 지정하면 Apple 플랫폼 최소 버전이 박히는데,
-// 이 패키지는 Windows에서도 빌드·테스트되어야 한다.
-// 앱 타깃의 iOS 17 요구는 앱 쪽에서 강제된다.
+// platforms는 **Apple 플랫폼의 최소 버전만** 제약한다. Windows·Linux 빌드에는
+// 영향이 없으므로 이 선언이 있어도 `swift test`는 Windows에서 그대로 돈다.
+//
+// macOS 13이 필요한 이유: SnapBench가 쓰는 Duration.components가 macOS 13+다.
+// 선언이 없으면 기본 타깃이 10.13이 되어 `swift test`가 SnapBench 컴파일에서
+// 죽는다 — 라이브러리와 테스트는 멀쩡한데 명령 전체가 실패한다.
 let package = Package(
     name: "SoozipGeometry",
+    platforms: [.iOS(.v17), .macOS(.v13)],
     products: [
         .library(name: "SoozipGeometry", targets: ["SoozipGeometry"])
     ],
