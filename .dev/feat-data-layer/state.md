@@ -18,7 +18,7 @@ last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
 auto-stashed: false
 config-setup-attempts: 1
 warnings-baseline: 0
-current-step: "RGR T2: RED 대기"
+current-step: "RGR T3: RED 대기"
 phases:
   setup: completed
   requirements: completed
@@ -37,8 +37,8 @@ steps:
   implement:
     - 기준선 게이트: completed
     - 태스크 분해 승인: completed
-    - "RGR T1 (AC-1~5) 모델+스키마": { red: completed, green: completed, refactor: completed, test-file-hash: 8705e19496e6251b49bd1cd50d4dca24a0842a2a, test-count: 113 }
-    - "RGR T2 CoverPolicy": pending
+    - "RGR T1 (AC-1~5) 모델+스키마": { red: completed, green: completed, refactor: completed, test-file-hash: d9acf17c45751d7a05879ac9d307c8dd17cfeb53 (REFACTOR 후 갱신), test-count: 113 }
+    - "RGR T2 CoverPolicy": { red: completed, green: completed, refactor: completed, test-file-hash: dc7ed87139e34b7b19eb01064f9f0ba0d52fe698, test-count: 122 }
     - "RGR T3 SyncStatusResolver+Error": pending
     - "RGR T4 하네스+모음집CRUD": pending
     - "RGR T5 캔버스 생성·갱신": pending
@@ -127,3 +127,12 @@ execution-log:
   - phase: implement
     agent: refactor-coder (T1)
     result: "테스트 중복 2건 추출(soozipSchema/makeInMemoryContext). 프로덕션 정리 대상 없음. GREEN 유지 113개"
+  - phase: implement
+    agent: red-writer (T2)
+    result: "CoverPolicyTests 9개. 타이브레이크 테스트가 배열 순서 의존 구현을 못 잡아 1회 보완 요구 → 두 순서 모두 검증하도록 수정"
+  - phase: implement
+    agent: green-coder (T2)
+    result: "CoverPolicy 30줄 최소 구현. 122개 통과, 회귀 0건"
+  - phase: implement
+    agent: refactor-coder (T2)
+    result: "테스트 중복 1건 추출(makeCollection). 프로덕션 정리 대상 없음"
