@@ -1,0 +1,96 @@
+# Soozip Xcode 프로젝트 정의 (XcodeGen)
+#
+# **이 파일이 프로젝트 설정의 원본이다.** Soozip.xcodeproj는 여기서 생성된
+# 산출물이며 편의를 위해 저장소에 함께 커밋한다. Xcode GUI에서 설정을 바꾸면
+# 이 파일에도 반영하고 `xcodegen generate`로 다시 만든다. 한쪽만 고치면 갈라진다.
+#
+# XcodeGen은 **개발 도구**이지 앱 의존성이 아니다. v4 §15의 "외부 SDK 0개"는
+# 앱 번들에 들어가는 것을 말하므로 이 선택과 충돌하지 않는다.
+#
+#   brew install xcodegen && xcodegen generate
+
+name: Soozip
+
+options:
+  bundleIdPrefix: com.rnqhstmd
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+  developmentLanguage: ko
+
+# 로컬 SPM 패키지 3종. 의존 방향은 Draft → Layout → Geometry다.
+packages:
+  SoozipGeometry:
+    path: Packages/SoozipGeometry
+  SoozipLayout:
+    path: Packages/SoozipLayout
+  SoozipDraft:
+    path: Packages/SoozipDraft
+
+targets:
+  Soozip:
+    type: application
+    platform: iOS
+    sources:
+      - path: Soozip
+        # 폰트는 Phase 0 Task 5에서 편입한다. 지금 넣으면 폰트 로드 테스트가
+        # 처음부터 통과해 버려서 "테스트가 실제로 누락을 잡는가"를 확인할 수 없다.
+        excludes:
+          - "Resources/**"
+    dependencies:
+      - package: SoozipGeometry
+      - package: SoozipLayout
+      - package: SoozipDraft
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rnqhstmd.soozip
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        # 1 = iPhone. iPad는 미정이라 넣지 않는다 (v4 §1.2).
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+    info:
+      path: Soozip/Info.plist
+      properties:
+        CFBundleDisplayName: soozip          # 표시 표기는 전부 소문자 (v4 §1)
+        # 빌드 설정을 참조시킨다. 리터럴로 두면 MARKETING_VERSION과 갈라져
+        # 심사 제출 때 엉뚱한 버전이 올라간다.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        # 다크모드 미지원 (v4 §15)
+        UIUserInterfaceStyle: Light
+        ITSAppUsesNonExemptEncryption: false
+        # Upside Down 제외 (v4 §15)
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  SoozipTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - SoozipTests
+    dependencies:
+      - target: Soozip
+      - package: SoozipGeometry
+      - package: SoozipLayout
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        # 테스트 번들은 앱과 달리 커스텀 Info.plist가 필요 없다.
+        # 자동 생성을 켜지 않으면 코드 서명 단계에서 거부당한다.
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Soozip:
+    build:
+      targets:
+        Soozip: all
+    test:
+      targets:
+        - SoozipTests
+    run:
+      config: Debug
