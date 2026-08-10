@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Xcode 프로젝트 골격을 세우고, v4 설계의 최대 기술 리스크 3건을 실측으로 검증해 이후 phase의 설계를 확정한다.
+**Goal:** 프로젝트 골격을 세우고, v4 설계의 최대 기술 리스크 3건을 실측으로 검증해 이후 phase의 설계를 확정한다.
 
-**Architecture:** 순수 기하 로직(`Core/Geometry`)은 SwiftUI 없이 단위 테스트로 먼저 완성하고, 그 위에 UI 프로토타입을 얹어 성능을 실측한다. 순수 로직은 Phase 3~4에서 그대로 재사용하고, **UI 프로토타입만 폐기**한다.
+**Architecture:** 기하 로직을 **CoreGraphics 의존 없는 SPM 패키지**(`SoozipGeometry`)로 분리한다. 순수 Swift라 Windows에서 `swift test`가 그대로 돌고, Apple 플랫폼에서는 `Vec2 ↔ CGPoint` 변환 어댑터로 잇는다. 그 위에 UI 프로토타입을 얹어 성능을 실측하고, **프로토타입만 폐기**한다.
 
 **Tech Stack:** Swift 6 / SwiftUI / SwiftData + CloudKit / Swift Testing / PencilKit / iOS 17+ / Xcode 26
 
@@ -16,38 +16,47 @@
 - 화면 방향 **Portrait · LandscapeLeft · LandscapeRight** (Upside Down 제외)
 - `UIUserInterfaceStyle = Light` 고정 (다크모드 미지원)
 - 논리좌표 폭 **1080 고정**, 높이 **1350** 또는 **1920**
-- 외부 SDK **0개**
+- 외부 SDK **0개** (SPM 로컬 패키지는 자체 코드이므로 해당 없음)
 - CloudKit: 전 속성 기본값 또는 optional · `@Attribute(.unique)` 불가 · 관계는 양방향 optional
 
 ---
 
-## ⚠️ 선행 조건 — 개발 환경
+## 실행 환경 — 두 구간으로 나뉜다
 
-**현재 저장소는 `D:\SQ\moumzip` (Windows)이고 git 저장소가 아니다.** iOS 앱은 macOS + Xcode에서만 빌드되므로, Task 1에서 이 문제를 먼저 해결한다. 이것을 건너뛰면 Task 2 이후를 실행할 수 없다.
+| 구간 | 태스크 | 환경 | 이유 |
+|---|---|---|---|
+| **A** | Task 1~5 | **Windows 가능** | `SoozipGeometry`는 CoreGraphics·SwiftUI에 의존하지 않는 순수 Swift다 |
+| **B** | Task 6~9 | **macOS 필수** | Xcode 프로젝트, 실기기 제스처 실측, CloudKit, 폰트 번들 |
+
+**구간 A를 Windows에서 완주한 뒤 Mac으로 넘어간다.** 그래서 Xcode 프로젝트 생성이 Task 6으로 내려갔다.
 
 ---
 
 ## File Structure
 
-Phase 0에서 만드는 파일. **`Core/Geometry/`만 이후 phase로 살아남고 `Spikes/`는 전부 폐기한다.**
+**`Packages/SoozipGeometry/`는 영구 자산**이고 `Soozip/Spikes/`는 전부 폐기한다.
 
 | 파일 | 책임 | 운명 |
 |---|---|---|
-| `Soozip.xcodeproj` | 프로젝트 설정 | 유지 |
+| `Packages/SoozipGeometry/Package.swift` | SPM 패키지 정의 | 유지 |
+| `.../Sources/SoozipGeometry/Vec2.swift` | 플랫폼 독립 좌표·크기 값 타입 | **유지** |
+| `.../Sources/SoozipGeometry/LayerFrame.swift` | 레이어의 중심·크기·회전과 좌표 변환 | **유지 — Phase 3의 기반** |
+| `.../Sources/SoozipGeometry/ResizeAnchor.swift` | 코너·변 핸들 리사이즈 계산 | **유지** |
+| `.../Sources/SoozipGeometry/SnapEngine.swift` | 정렬·균등 간격·크기 일치 후보 계산 | **유지 — Phase 4의 기반** |
+| `.../Tests/SoozipGeometryTests/*.swift` | 위 전부의 단위 테스트 | 유지 |
+| `Soozip.xcodeproj` | 앱 프로젝트 | 유지 |
 | `Soozip/App/SoozipApp.swift` | 앱 진입점 | 유지 |
-| `Soozip/Core/Geometry/LayerFrame.swift` | 레이어의 중심·크기·회전과 좌표 변환 | **유지 — Phase 3의 기반** |
-| `Soozip/Core/Geometry/ResizeAnchor.swift` | 코너·변 핸들 리사이즈 계산 | **유지** |
-| `Soozip/Core/Geometry/SnapEngine.swift` | 정렬·균등 간격·크기 일치 후보 계산 | **유지 — Phase 4의 기반** |
+| `Soozip/Core/Geometry/CGInterop.swift` | `Vec2 ↔ CGPoint` 변환 | **유지** |
+| `Soozip/Core/Layout/AppFont.swift` | 폰트 식별자 | 유지 |
 | `Soozip/Spikes/S1_GestureProbe.swift` | 선택 UI + 제스처 프로토타입 | 폐기 |
 | `Soozip/Spikes/S2_CloudKitProbe.swift` | SwiftData 모델 검증용 | 폐기 (Phase 1에서 재작성) |
-| `SoozipTests/Geometry/LayerFrameTests.swift` | 좌표 변환 테스트 | 유지 |
-| `SoozipTests/Geometry/ResizeAnchorTests.swift` | 리사이즈 테스트 | 유지 |
-| `SoozipTests/Geometry/SnapEngineTests.swift` | 스냅 테스트 | 유지 |
 | `docs/reports/2026-08-10-spike-results.md` | 실측 결과 | 유지 |
 
 ---
 
-### Task 1: 개발 환경 이전 — git 초기화와 macOS 작업 경로
+# 구간 A — Windows
+
+### Task 1: 개발 환경 이전 — git 초기화와 원격 저장소 ✅ 완료
 
 **Files:**
 - Create: `.gitignore`
@@ -55,216 +64,212 @@ Phase 0에서 만드는 파일. **`Core/Geometry/`만 이후 phase로 살아남�
 
 **Interfaces:**
 - Consumes: 없음 (첫 태스크)
-- Produces: macOS에서 클론 가능한 git 저장소. 이후 모든 태스크는 macOS에서 실행된다.
+- Produces: `https://github.com/rnqhstmd/soozip` — 이후 모든 태스크가 이 저장소에서 진행된다.
 
-- [ ] **Step 1: Windows 저장소에서 git 초기화**
+- [x] **Step 1: git 초기화** — `git init` + `main` 브랜치
+- [x] **Step 2: `.gitignore` 작성** — Xcode·SPM·에이전트 산출물 제외
+- [x] **Step 3: `README.md` 작성**
+- [x] **Step 4: 초기 커밋** — 42개 파일 (`7289e34`)
+- [x] **Step 5: 원격 연결 및 푸시** — `https://github.com/rnqhstmd/soozip`
+
+> **훅 규칙:** 이 저장소는 **main 브랜치 직접 커밋이 차단**되어 있다. 이후 모든 태스크는 작업 브랜치에서 커밋한다.
+
+---
+
+### Task 2: Swift 툴체인 설치와 SPM 패키지 스캐폴딩
+
+**Files:**
+- Create: `Packages/SoozipGeometry/Package.swift`
+- Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/Vec2.swift`
+- Test: `Packages/SoozipGeometry/Tests/SoozipGeometryTests/Vec2Tests.swift`
+
+**Interfaces:**
+- Consumes: Task 1의 저장소
+- Produces:
+  - `struct Vec2 { var x: Double; var y: Double }` — `CGPoint` 대체
+  - `struct Size2 { var width: Double; var height: Double }` — `CGSize` 대체
+  - `Vec2.zero` · `Size2.zero` · `Size2.shortSide` · `Size2.longSide`
+  - Task 3~5가 이 타입 위에 세워지고, Task 6의 `CGInterop`이 CoreGraphics와 잇는다.
+
+- [ ] **Step 1: Windows에 Swift 6 툴체인 설치**
+
+```powershell
+winget install --id Swift.Toolchain -e
+```
+
+Visual Studio 빌드 도구가 함께 설치된다(수 GB). 설치 후 **새 터미널**에서:
+
+```bash
+swift --version
+```
+
+Expected: `Swift version 6.x` 출력. 버전이 안 나오면 PATH가 반영되지 않은 것이므로 터미널을 다시 연다.
+
+- [ ] **Step 2: 작업 브랜치 생성과 패키지 스캐폴딩**
 
 ```bash
 cd /d/SQ/moumzip
-git init
-git branch -M main
+git checkout -b feat/geometry-package
+mkdir -p Packages/SoozipGeometry/Sources/SoozipGeometry
+mkdir -p Packages/SoozipGeometry/Tests/SoozipGeometryTests
 ```
 
-- [ ] **Step 2: `.gitignore` 작성**
+`Packages/SoozipGeometry/Package.swift`:
 
-```gitignore
-# Xcode
-build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
-*.xcscmblueprint
-*.xccheckout
-.DS_Store
+```swift
+// swift-tools-version: 6.0
+import PackageDescription
 
-# Swift Package Manager
-.build/
-.swiftpm/
-
-# 세션 산출물
-.omc/
-.superpowers/
+let package = Package(
+    name: "SoozipGeometry",
+    products: [
+        .library(name: "SoozipGeometry", targets: ["SoozipGeometry"])
+    ],
+    targets: [
+        .target(name: "SoozipGeometry"),
+        .testTarget(
+            name: "SoozipGeometryTests",
+            dependencies: ["SoozipGeometry"]
+        )
+    ]
+)
 ```
 
-- [ ] **Step 3: `README.md` 작성**
+**`platforms:`를 지정하지 않는다.** 지정하면 Apple 플랫폼 최소 버전이 박히는데, 이 패키지는 Windows에서도 빌드되어야 한다. 앱 타깃의 iOS 17 요구는 앱 쪽에서 강제된다.
 
-```markdown
-# soozip
+- [ ] **Step 3: 실패하는 테스트 작성**
 
-흰 캔버스에 사진·텍스트·도형을 자유 배치해 만든 한 장을 모음집에 담는 iOS 앱.
-서버·계정 없음.
-
-## 문서
-
-- 설계 SSOT: `docs/specs/2026-08-10-moumzip-mvp-design-v4.md`
-- 구현 로드맵: `docs/plans/2026-08-10-00-roadmap.md`
-- 도메인 컨텍스트: `context/` (collection · canvas · editor · media · sync · profile)
-
-## 개발 환경
-
-**macOS + Xcode 26 필수.** iOS 26 SDK로 빌드하며 최소 지원은 iOS 17.0.
-```
-
-- [ ] **Step 4: 첫 커밋**
-
-```bash
-git add .
-git commit -m "chore: 저장소 초기화 — 설계 문서와 도메인 컨텍스트"
-```
-
-- [ ] **Step 5: 원격 저장소 생성 및 푸시**
-
-```bash
-gh repo create soozip --private --source=. --remote=origin --push
-```
-
-`gh`가 없으면 GitHub에서 빈 private 저장소를 만든 뒤:
-
-```bash
-git remote add origin <저장소 URL>
-git push -u origin main
-```
-
-- [ ] **Step 6: macOS에서 클론하고 이후 작업 경로를 확정**
-
-macOS 터미널에서:
-
-```bash
-git clone <저장소 URL> ~/dev/soozip
-cd ~/dev/soozip
-ls docs/specs/2026-08-10-moumzip-mvp-design-v4.md
-```
-
-Expected: 설계서 경로가 출력된다.
-
-**이후 모든 태스크는 macOS의 이 경로에서 실행한다.**
-
----
-
-### Task 2: Xcode 프로젝트 생성과 전역 설정
-
-**Files:**
-- Create: `Soozip.xcodeproj`
-- Create: `Soozip/App/SoozipApp.swift`
-- Create: `Soozip/Info.plist` (프로젝트 설정으로 생성됨)
-- Test: `SoozipTests/SmokeTests.swift`
-
-**Interfaces:**
-- Consumes: Task 1의 git 저장소
-- Produces: 빌드 가능한 앱 타깃 `Soozip`, 테스트 타깃 `SoozipTests`. 이후 모든 태스크가 이 타깃에 파일을 추가한다.
-
-- [ ] **Step 1: Xcode에서 프로젝트 생성**
-
-Xcode → File → New → Project → iOS → App
-
-| 항목 | 값 |
-|---|---|
-| Product Name | `Soozip` |
-| Interface | SwiftUI |
-| Language | Swift |
-| Storage | **None** (SwiftData는 Phase 1에서 직접 구성) |
-| Include Tests | **체크** |
-| 저장 위치 | `~/dev/soozip` (저장소 루트) |
-
-- [ ] **Step 2: 전역 설정 적용**
-
-프로젝트 → TARGETS → Soozip → General / Info에서:
-
-| 설정 | 값 |
-|---|---|
-| Minimum Deployments | **iOS 17.0** |
-| Supported Destinations | iPhone (iPad는 미정 — 지금은 제외) |
-| iPhone Orientation | Portrait · Landscape Left · Landscape Right **(Upside Down 해제)** |
-
-Info.plist에 다음을 추가:
-
-```xml
-<key>UIUserInterfaceStyle</key>
-<string>Light</string>
-<key>ITSAppUsesNonExemptEncryption</key>
-<false/>
-```
-
-- [ ] **Step 3: 폴더 구조 생성**
-
-Xcode의 Group이 아니라 **실제 디렉토리**로 만든다. 터미널에서:
-
-```bash
-cd ~/dev/soozip/Soozip
-mkdir -p App Core/{Layout,Image,Rendering,Geometry,Haptics} \
-         Data/{Models,DraftStore,Repository} \
-         Features/{CollectionHome,CollectionDetail,Viewer,Search,Profile} \
-         Features/Editor/{Canvas,Selection,SmartGuide,Tools} \
-         Resources/Fonts Spikes
-```
-
-Xcode에서 각 디렉토리를 프로젝트에 추가한다 (드래그 시 **"Create groups"** 선택).
-
-생성된 `SoozipApp.swift`를 `App/`으로 옮긴다.
-
-- [ ] **Step 4: 스모크 테스트 작성**
-
-`SoozipTests/SmokeTests.swift`:
+`Packages/SoozipGeometry/Tests/SoozipGeometryTests/Vec2Tests.swift`:
 
 ```swift
 import Testing
-@testable import Soozip
+@testable import SoozipGeometry
 
-@Test func 앱_타깃이_빌드되고_테스트가_실행된다() {
-    #expect(Bundle.main.bundleIdentifier != nil)
+@Test func Vec2는_성분으로_생성되고_비교된다() {
+    let a = Vec2(x: 3, y: 4)
+    let b = Vec2(x: 3, y: 4)
+    #expect(a == b)
+    #expect(a.x == 3)
+    #expect(a.y == 4)
+}
+
+@Test func Vec2_zero는_원점이다() {
+    #expect(Vec2.zero == Vec2(x: 0, y: 0))
+}
+
+@Test func Size2는_폭과_높이를_갖는다() {
+    let s = Size2(width: 200, height: 100)
+    #expect(s.width == 200)
+    #expect(s.height == 100)
+}
+
+@Test func Size2의_짧은변과_긴변() {
+    let s = Size2(width: 200, height: 100)
+    #expect(s.shortSide == 100)
+    #expect(s.longSide == 200)
 }
 ```
 
-- [ ] **Step 5: 테스트 실행**
+- [ ] **Step 4: 테스트 실패 확인**
 
 ```bash
-cd ~/dev/soozip
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' | tail -20
+cd /d/SQ/moumzip/Packages/SoozipGeometry
+swift test 2>&1 | tail -20
 ```
 
-Expected: `TEST SUCCEEDED`
+Expected: 컴파일 실패 — `cannot find 'Vec2' in scope`
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 5: 최소 구현**
+
+`Packages/SoozipGeometry/Sources/SoozipGeometry/Vec2.swift`:
+
+```swift
+import Foundation
+
+/// 플랫폼 독립 2D 좌표. Apple 플랫폼에서는 `CGPoint`와 상호 변환한다(CGInterop).
+///
+/// CoreGraphics를 쓰지 않는 이유: 이 패키지는 Windows에서도 빌드·테스트되어야 한다.
+/// 기하 로직을 UI에서 물리적으로 분리하는 효과는 덤이다.
+public struct Vec2: Equatable, Sendable {
+    public var x: Double
+    public var y: Double
+
+    public init(x: Double, y: Double) {
+        self.x = x
+        self.y = y
+    }
+
+    public static let zero = Vec2(x: 0, y: 0)
+}
+
+/// 플랫폼 독립 크기. Apple 플랫폼에서는 `CGSize`와 상호 변환한다.
+public struct Size2: Equatable, Sendable {
+    public var width: Double
+    public var height: Double
+
+    public init(width: Double, height: Double) {
+        self.width = width
+        self.height = height
+    }
+
+    public static let zero = Size2(width: 0, height: 0)
+
+    public var shortSide: Double { min(width, height) }
+    public var longSide: Double { max(width, height) }
+}
+```
+
+- [ ] **Step 6: 테스트 통과 확인**
 
 ```bash
-git add .
-git commit -m "chore: Xcode 프로젝트 생성 — iOS 17+, 세로·가로 지원, Light 고정"
+swift test 2>&1 | tail -20
+```
+
+Expected: 4개 테스트 PASS
+
+- [ ] **Step 7: 커밋**
+
+```bash
+cd /d/SQ/moumzip
+git add Packages/
+git commit -m "feat: SoozipGeometry 패키지 스캐폴딩 — Vec2/Size2 플랫폼 독립 값 타입"
 ```
 
 ---
 
-### Task 3: LayerFrame — 좌표 변환 (S1 순수 로직)
+### Task 3: LayerFrame — 좌표 변환
 
 **Files:**
-- Create: `Soozip/Core/Geometry/LayerFrame.swift`
-- Test: `SoozipTests/Geometry/LayerFrameTests.swift`
+- Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/LayerFrame.swift`
+- Test: `Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerFrameTests.swift`
 
 **Interfaces:**
-- Consumes: 없음 (순수 값 타입)
+- Consumes: Task 2의 `Vec2`, `Size2`
 - Produces:
-  - `struct LayerFrame { var center: CGPoint; var size: CGSize; var rotation: CGFloat }`
-  - `func toLocal(_ p: CGPoint) -> CGPoint` — 화면 좌표를 레이어 로컬 좌표로
-  - `func toWorld(_ p: CGPoint) -> CGPoint` — 그 역변환
-  - `enum Corner { case topLeft, topRight, bottomLeft, bottomRight }`
-  - `func corner(_ c: Corner) -> CGPoint` — 회전이 적용된 월드 좌표
+  - `struct LayerFrame { var center: Vec2; var size: Size2; var rotation: Double }`
+  - `func toLocal(_ p: Vec2) -> Vec2` — 월드 좌표를 레이어 로컬 좌표로
+  - `func toWorld(_ p: Vec2) -> Vec2` — 그 역변환
+  - `enum Corner: CaseIterable, Hashable { case topLeft, topRight, bottomLeft, bottomRight }`
+  - `var sign: (x: Double, y: Double)` · `var opposite: Corner`
+  - `func corner(_ c: Corner) -> Vec2` — 회전이 적용된 월드 좌표
   - Task 4의 `ResizeAnchor`와 Task 5의 `SnapEngine`이 이 타입을 입력으로 받는다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`SoozipTests/Geometry/LayerFrameTests.swift`:
+`Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerFrameTests.swift`:
 
 ```swift
 import Testing
-import CoreGraphics
-@testable import Soozip
+import Foundation
+@testable import SoozipGeometry
 
-private func isClose(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.01 }
+private func isClose(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 0.01 }
 
 @Test func 회전이_0이면_로컬좌표는_중심기준_평행이동이다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
-    let local = frame.toLocal(CGPoint(x: 600, y: 400))
+    let local = frame.toLocal(Vec2(x: 600, y: 400))
     #expect(isClose(local.x, 100))
     #expect(isClose(local.y, 0))
 }
@@ -272,27 +277,27 @@ private func isClose(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.01 }
 @Test func 회전된_레이어는_역회전_행렬로_로컬좌표를_구한다() {
     // 45° 회전된 레이어에서 중심의 오른쪽 100pt 지점은
     // 로컬 좌표로 (100·cos(-45°), 100·sin(-45°)) = (70.71, -70.71)
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: .pi / 4)
-    let local = frame.toLocal(CGPoint(x: 600, y: 400))
+    let local = frame.toLocal(Vec2(x: 600, y: 400))
     #expect(isClose(local.x, 70.71))
     #expect(isClose(local.y, -70.71))
 }
 
 @Test func toLocal과_toWorld는_서로_역변환이다() {
-    let frame = LayerFrame(center: CGPoint(x: 320, y: 780),
-                           size: CGSize(width: 150, height: 90),
+    let frame = LayerFrame(center: Vec2(x: 320, y: 780),
+                           size: Size2(width: 150, height: 90),
                            rotation: 0.7)
-    let original = CGPoint(x: 411, y: 623)
+    let original = Vec2(x: 411, y: 623)
     let roundTrip = frame.toWorld(frame.toLocal(original))
     #expect(isClose(roundTrip.x, original.x))
     #expect(isClose(roundTrip.y, original.y))
 }
 
 @Test func 회전이_0인_레이어의_네_코너() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     #expect(isClose(frame.corner(.topLeft).x, 400))
     #expect(isClose(frame.corner(.topLeft).y, 350))
@@ -301,37 +306,47 @@ private func isClose(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.01 }
 }
 
 @Test func 회전된_레이어의_코너는_중심에서_같은_거리에_있다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: .pi / 6)
-    let expected = hypot(100.0, 50.0)   // 대각 반지름
-    for corner in [Corner.topLeft, .topRight, .bottomLeft, .bottomRight] {
+    let expected = (100.0 * 100.0 + 50.0 * 50.0).squareRoot()   // 대각 반지름
+    for corner in Corner.allCases {
         let p = frame.corner(corner)
-        #expect(isClose(hypot(p.x - 500, p.y - 400), expected))
+        let dx = p.x - 500
+        let dy = p.y - 400
+        #expect(isClose((dx * dx + dy * dy).squareRoot(), expected))
     }
+}
+
+@Test func 코너의_대각_반대편() {
+    #expect(Corner.topLeft.opposite == .bottomRight)
+    #expect(Corner.topRight.opposite == .bottomLeft)
+    #expect(Corner.bottomLeft.opposite == .topRight)
+    #expect(Corner.bottomRight.opposite == .topLeft)
 }
 ```
 
 - [ ] **Step 2: 테스트 실패 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/LayerFrameTests 2>&1 | tail -20
+cd /d/SQ/moumzip/Packages/SoozipGeometry
+swift test --filter LayerFrameTests 2>&1 | tail -20
 ```
 
 Expected: 컴파일 실패 — `cannot find 'LayerFrame' in scope`
 
 - [ ] **Step 3: 최소 구현**
 
-`Soozip/Core/Geometry/LayerFrame.swift`:
+`Packages/SoozipGeometry/Sources/SoozipGeometry/LayerFrame.swift`:
 
 ```swift
-import CoreGraphics
+import Foundation
 
-enum Corner: CaseIterable {
+public enum Corner: CaseIterable, Hashable, Sendable {
     case topLeft, topRight, bottomLeft, bottomRight
 
-    /// 중심 기준 로컬 좌표의 부호 (x, y)
-    var sign: (x: CGFloat, y: CGFloat) {
+    /// 중심 기준 로컬 좌표의 부호
+    public var sign: (x: Double, y: Double) {
         switch self {
         case .topLeft:     return (-1, -1)
         case .topRight:    return ( 1, -1)
@@ -340,7 +355,7 @@ enum Corner: CaseIterable {
         }
     }
 
-    var opposite: Corner {
+    public var opposite: Corner {
         switch self {
         case .topLeft:     return .bottomRight
         case .topRight:    return .bottomLeft
@@ -350,35 +365,41 @@ enum Corner: CaseIterable {
     }
 }
 
-/// 레이어의 기하 상태. 논리좌표계에서만 쓴다.
-struct LayerFrame: Equatable {
-    var center: CGPoint
-    var size: CGSize
-    var rotation: CGFloat   // 라디안
+/// 레이어의 기하 상태. 논리좌표계(폭 1080 고정)에서만 쓴다.
+public struct LayerFrame: Equatable, Sendable {
+    public var center: Vec2
+    public var size: Size2
+    public var rotation: Double   // 라디안
+
+    public init(center: Vec2, size: Size2, rotation: Double) {
+        self.center = center
+        self.size = size
+        self.rotation = rotation
+    }
 
     /// 월드(논리) 좌표 → 레이어 로컬 좌표.
     /// 회전된 레이어를 드래그·리사이즈할 때 반드시 이 변환을 거친다.
-    func toLocal(_ p: CGPoint) -> CGPoint {
+    public func toLocal(_ p: Vec2) -> Vec2 {
         let dx = p.x - center.x
         let dy = p.y - center.y
         let c = cos(-rotation)
         let s = sin(-rotation)
-        return CGPoint(x: dx * c - dy * s,
-                       y: dx * s + dy * c)
+        return Vec2(x: dx * c - dy * s,
+                    y: dx * s + dy * c)
     }
 
     /// 레이어 로컬 좌표 → 월드(논리) 좌표.
-    func toWorld(_ p: CGPoint) -> CGPoint {
+    public func toWorld(_ p: Vec2) -> Vec2 {
         let c = cos(rotation)
         let s = sin(rotation)
-        return CGPoint(x: center.x + p.x * c - p.y * s,
-                       y: center.y + p.x * s + p.y * c)
+        return Vec2(x: center.x + p.x * c - p.y * s,
+                    y: center.y + p.x * s + p.y * c)
     }
 
-    func corner(_ corner: Corner) -> CGPoint {
+    public func corner(_ corner: Corner) -> Vec2 {
         let sign = corner.sign
-        return toWorld(CGPoint(x: sign.x * size.width  / 2,
-                               y: sign.y * size.height / 2))
+        return toWorld(Vec2(x: sign.x * size.width  / 2,
+                            y: sign.y * size.height / 2))
     }
 }
 ```
@@ -386,55 +407,56 @@ struct LayerFrame: Equatable {
 - [ ] **Step 4: 테스트 통과 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/LayerFrameTests 2>&1 | tail -20
+swift test --filter LayerFrameTests 2>&1 | tail -20
 ```
 
-Expected: 5개 테스트 전부 PASS
+Expected: 6개 테스트 PASS
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add Soozip/Core/Geometry/LayerFrame.swift SoozipTests/Geometry/LayerFrameTests.swift
+cd /d/SQ/moumzip
+git add Packages/
 git commit -m "feat: LayerFrame — 회전 레이어의 로컬/월드 좌표 변환"
 ```
 
 ---
 
-### Task 4: ResizeAnchor — 코너·변 핸들 리사이즈 (S1 순수 로직)
+### Task 4: ResizeAnchor — 코너·변 핸들 리사이즈
 
 **Files:**
-- Create: `Soozip/Core/Geometry/ResizeAnchor.swift`
-- Test: `SoozipTests/Geometry/ResizeAnchorTests.swift`
+- Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift`
+- Test: `Packages/SoozipGeometry/Tests/SoozipGeometryTests/ResizeAnchorTests.swift`
 
 **Interfaces:**
 - Consumes: Task 3의 `LayerFrame`, `Corner`
 - Produces:
-  - `enum Edge { case left, right, top, bottom }`
-  - `func resized(draggingCorner: Corner, to worldPoint: CGPoint, minShortSide: CGFloat, maxLongSide: CGFloat) -> LayerFrame` — 비율 유지
-  - `func resized(draggingEdge: Edge, to worldPoint: CGPoint, minShortSide: CGFloat, maxLongSide: CGFloat) -> LayerFrame` — 한 축만
+  - `enum Edge { case left, right, top, bottom }` · `var opposite: Edge` · `var isHorizontal: Bool`
+  - `func resized(draggingCorner: Corner, to worldPoint: Vec2, minShortSide: Double, maxLongSide: Double) -> LayerFrame` — 비율 유지
+  - `func resized(draggingEdge: Edge, to worldPoint: Vec2, minShortSide: Double, maxLongSide: Double) -> LayerFrame` — 한 축만
   - Phase 3의 선택 UI가 이 두 함수를 호출한다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`SoozipTests/Geometry/ResizeAnchorTests.swift`:
+`Packages/SoozipGeometry/Tests/SoozipGeometryTests/ResizeAnchorTests.swift`:
 
 ```swift
 import Testing
-import CoreGraphics
-@testable import Soozip
+import Foundation
+@testable import SoozipGeometry
 
-private func isClose(_ a: CGFloat, _ b: CGFloat) -> Bool { abs(a - b) < 0.01 }
-private let minSide: CGFloat = 40
-private let maxSide: CGFloat = 7680   // 캔버스 긴 변 1920 × 4
+private func isClose(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 0.01 }
+private let minSide: Double = 40
+private let maxSide: Double = 7680   // 캔버스 긴 변 1920 × 4
 
 @Test func 코너드래그시_대각_반대편_코너가_고정된다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     let anchor = frame.corner(.bottomLeft)
 
     let resized = frame.resized(draggingCorner: .topRight,
-                                to: CGPoint(x: 700, y: 300),
+                                to: Vec2(x: 700, y: 300),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
     #expect(isClose(resized.corner(.bottomLeft).x, anchor.x))
@@ -442,13 +464,13 @@ private let maxSide: CGFloat = 7680   // 캔버스 긴 변 1920 × 4
 }
 
 @Test func 회전된_레이어도_대각_반대편이_고정된다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: .pi / 4)
     let anchor = frame.corner(.bottomLeft)
 
     let resized = frame.resized(draggingCorner: .topRight,
-                                to: CGPoint(x: 640, y: 260),
+                                to: Vec2(x: 640, y: 260),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
     #expect(isClose(resized.corner(.bottomLeft).x, anchor.x))
@@ -456,47 +478,47 @@ private let maxSide: CGFloat = 7680   // 캔버스 긴 변 1920 × 4
 }
 
 @Test func 코너드래그는_원본_비율을_유지한다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     let ratio = frame.size.width / frame.size.height
 
     let resized = frame.resized(draggingCorner: .topRight,
-                                to: CGPoint(x: 900, y: 100),
+                                to: Vec2(x: 900, y: 100),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
     #expect(isClose(resized.size.width / resized.size.height, ratio))
 }
 
 @Test func 크기_하한에서_정지한다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     // 대각 반대편(bottomLeft)에 거의 붙도록 끌어당긴다
     let resized = frame.resized(draggingCorner: .topRight,
-                                to: CGPoint(x: 401, y: 449),
+                                to: Vec2(x: 401, y: 449),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
-    #expect(min(resized.size.width, resized.size.height) >= minSide - 0.01)
+    #expect(resized.size.shortSide >= minSide - 0.01)
 }
 
 @Test func 크기_상한에서_정지한다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     let resized = frame.resized(draggingCorner: .topRight,
-                                to: CGPoint(x: 99_999, y: -99_999),
+                                to: Vec2(x: 99_999, y: -99_999),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
-    #expect(max(resized.size.width, resized.size.height) <= maxSide + 0.01)
+    #expect(resized.size.longSide <= maxSide + 0.01)
 }
 
 @Test func 변핸들은_한_축만_바꾼다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     let resized = frame.resized(draggingEdge: .right,
-                                to: CGPoint(x: 700, y: 400),
+                                to: Vec2(x: 700, y: 400),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
     #expect(isClose(resized.size.width, 300))
@@ -504,13 +526,13 @@ private let maxSide: CGFloat = 7680   // 캔버스 긴 변 1920 × 4
 }
 
 @Test func 변핸들도_반대쪽_변이_고정된다() {
-    let frame = LayerFrame(center: CGPoint(x: 500, y: 400),
-                           size: CGSize(width: 200, height: 100),
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
                            rotation: 0)
     let leftEdgeX = frame.corner(.topLeft).x
 
     let resized = frame.resized(draggingEdge: .right,
-                                to: CGPoint(x: 700, y: 400),
+                                to: Vec2(x: 700, y: 400),
                                 minShortSide: minSide, maxLongSide: maxSide)
 
     #expect(isClose(resized.corner(.topLeft).x, leftEdgeX))
@@ -520,23 +542,24 @@ private let maxSide: CGFloat = 7680   // 캔버스 긴 변 1920 × 4
 - [ ] **Step 2: 테스트 실패 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/ResizeAnchorTests 2>&1 | tail -20
+cd /d/SQ/moumzip/Packages/SoozipGeometry
+swift test --filter ResizeAnchorTests 2>&1 | tail -20
 ```
 
 Expected: 컴파일 실패 — `value of type 'LayerFrame' has no member 'resized'`
 
 - [ ] **Step 3: 최소 구현**
 
-`Soozip/Core/Geometry/ResizeAnchor.swift`:
+`Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift`:
 
 ```swift
-import CoreGraphics
+import Foundation
 
-enum Edge {
+public enum Edge: Sendable {
     case left, right, top, bottom
 
     /// 이 변을 끌 때 고정되는 반대쪽 변
-    var opposite: Edge {
+    public var opposite: Edge {
         switch self {
         case .left:   return .right
         case .right:  return .left
@@ -545,24 +568,24 @@ enum Edge {
         }
     }
 
-    var isHorizontal: Bool { self == .left || self == .right }
+    public var isHorizontal: Bool { self == .left || self == .right }
 }
 
 extension LayerFrame {
 
     /// 코너 핸들 드래그 — 비율을 유지하고 대각 반대편 코너를 고정한다.
-    func resized(draggingCorner corner: Corner,
-                 to worldPoint: CGPoint,
-                 minShortSide: CGFloat,
-                 maxLongSide: CGFloat) -> LayerFrame {
+    public func resized(draggingCorner corner: Corner,
+                        to worldPoint: Vec2,
+                        minShortSide: Double,
+                        maxLongSide: Double) -> LayerFrame {
 
         let anchorCorner = corner.opposite
         let anchorWorld = self.corner(anchorCorner)
 
         // 로컬 좌표에서 계산한다. 회전을 여기서 제거해야 대각 고정이 성립한다.
         let dragLocal = toLocal(worldPoint)
-        let anchorLocal = CGPoint(x: anchorCorner.sign.x * size.width  / 2,
-                                  y: anchorCorner.sign.y * size.height / 2)
+        let anchorLocal = Vec2(x: anchorCorner.sign.x * size.width  / 2,
+                               y: anchorCorner.sign.y * size.height / 2)
 
         let rawW = abs(dragLocal.x - anchorLocal.x)
         let rawH = abs(dragLocal.y - anchorLocal.y)
@@ -577,29 +600,25 @@ extension LayerFrame {
                                     maxLongSide: maxLongSide)
 
         // 고정점에서 드래그 방향으로 새 중심을 잡는다
-        let dirX = corner.sign.x
-        let dirY = corner.sign.y
-        let newCenterLocal = CGPoint(x: anchorLocal.x + dirX * newW / 2,
-                                     y: anchorLocal.y + dirY * newH / 2)
-        let newCenterWorld = toWorld(newCenterLocal)
+        let newCenterLocal = Vec2(x: anchorLocal.x + corner.sign.x * newW / 2,
+                                  y: anchorLocal.y + corner.sign.y * newH / 2)
 
-        var result = LayerFrame(center: newCenterWorld,
-                                size: CGSize(width: newW, height: newH),
+        var result = LayerFrame(center: toWorld(newCenterLocal),
+                                size: Size2(width: newW, height: newH),
                                 rotation: rotation)
 
         // 회전 중심이 바뀌었으므로 고정점이 유지되도록 보정한다
-        let drift = CGPoint(x: anchorWorld.x - result.corner(anchorCorner).x,
-                            y: anchorWorld.y - result.corner(anchorCorner).y)
-        result.center.x += drift.x
-        result.center.y += drift.y
+        let moved = result.corner(anchorCorner)
+        result.center.x += anchorWorld.x - moved.x
+        result.center.y += anchorWorld.y - moved.y
         return result
     }
 
     /// 변 핸들 드래그 — 한 축만 바꾸고 반대쪽 변을 고정한다.
-    func resized(draggingEdge edge: Edge,
-                 to worldPoint: CGPoint,
-                 minShortSide: CGFloat,
-                 maxLongSide: CGFloat) -> LayerFrame {
+    public func resized(draggingEdge edge: Edge,
+                        to worldPoint: Vec2,
+                        minShortSide: Double,
+                        maxLongSide: Double) -> LayerFrame {
 
         let dragLocal = toLocal(worldPoint)
         var newW = size.width
@@ -618,24 +637,23 @@ extension LayerFrame {
         // 반대쪽 변을 고정하려면 중심을 늘어난 절반만큼 이동시킨다
         let deltaW = newW - size.width
         let deltaH = newH - size.height
-        let shiftLocal: CGPoint
+        let shiftLocal: Vec2
         switch edge {
-        case .right:  shiftLocal = CGPoint(x:  deltaW / 2, y: 0)
-        case .left:   shiftLocal = CGPoint(x: -deltaW / 2, y: 0)
-        case .bottom: shiftLocal = CGPoint(x: 0, y:  deltaH / 2)
-        case .top:    shiftLocal = CGPoint(x: 0, y: -deltaH / 2)
+        case .right:  shiftLocal = Vec2(x:  deltaW / 2, y: 0)
+        case .left:   shiftLocal = Vec2(x: -deltaW / 2, y: 0)
+        case .bottom: shiftLocal = Vec2(x: 0, y:  deltaH / 2)
+        case .top:    shiftLocal = Vec2(x: 0, y: -deltaH / 2)
         }
 
-        let newCenter = toWorld(shiftLocal)
-        return LayerFrame(center: newCenter,
-                          size: CGSize(width: newW, height: newH),
+        return LayerFrame(center: toWorld(shiftLocal),
+                          size: Size2(width: newW, height: newH),
                           rotation: rotation)
     }
 
     /// 짧은 변 하한과 긴 변 상한을 비율을 유지한 채 적용한다.
-    private static func clamped(width: CGFloat, height: CGFloat,
-                                minShortSide: CGFloat,
-                                maxLongSide: CGFloat) -> (CGFloat, CGFloat) {
+    private static func clamped(width: Double, height: Double,
+                                minShortSide: Double,
+                                maxLongSide: Double) -> (Double, Double) {
         var w = width
         var h = height
 
@@ -660,54 +678,55 @@ extension LayerFrame {
 - [ ] **Step 4: 테스트 통과 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/ResizeAnchorTests 2>&1 | tail -20
+swift test --filter ResizeAnchorTests 2>&1 | tail -20
 ```
 
-Expected: 7개 테스트 전부 PASS
+Expected: 7개 테스트 PASS
 
-실패하면 **구현이 아니라 테스트가 맞다고 가정하고 구현을 고친다.** 특히 회전 케이스에서 고정점이 어긋나면 `drift` 보정 로직을 점검한다.
+실패하면 **테스트가 맞다고 가정하고 구현을 고친다.** 특히 회전 케이스에서 고정점이 어긋나면 마지막 보정 로직을 점검한다.
 
 - [ ] **Step 5: 커밋**
 
 ```bash
-git add Soozip/Core/Geometry/ResizeAnchor.swift SoozipTests/Geometry/ResizeAnchorTests.swift
+cd /d/SQ/moumzip
+git add Packages/
 git commit -m "feat: ResizeAnchor — 코너/변 핸들 리사이즈, 대각 고정과 크기 제한"
 ```
 
 ---
 
-### Task 5: SnapEngine — 정렬·균등 간격·크기 일치 (S1 순수 로직)
+### Task 5: SnapEngine — 정렬·균등 간격·크기 일치
 
 **Files:**
-- Create: `Soozip/Core/Geometry/SnapEngine.swift`
-- Test: `SoozipTests/Geometry/SnapEngineTests.swift`
+- Create: `Packages/SoozipGeometry/Sources/SoozipGeometry/SnapEngine.swift`
+- Test: `Packages/SoozipGeometry/Tests/SoozipGeometryTests/SnapEngineTests.swift`
 
 **Interfaces:**
 - Consumes: Task 3의 `LayerFrame`
 - Produces:
-  - `struct SnapCandidate { let axis: Axis; let value: CGFloat; let kind: SnapKind }`
-  - `enum SnapKind { case alignment, equalSpacing, sizeMatch }`
   - `enum Axis { case horizontal, vertical }`
-  - `func snapCandidates(for moving: LayerFrame, among others: [LayerFrame], canvasSize: CGSize, threshold: CGFloat) -> [SnapCandidate]`
+  - `enum SnapKind { case alignment, equalSpacing, sizeMatch }`
+  - `struct SnapCandidate { let axis: Axis; let value: Double; let kind: SnapKind }`
+  - `func snapCandidates(for moving: LayerFrame, among others: [LayerFrame], canvasSize: Size2, threshold: Double) -> [SnapCandidate]`
   - Phase 4의 가이드 오버레이와 햅틱이 이 결과를 소비한다.
 
 - [ ] **Step 1: 실패하는 테스트 작성**
 
-`SoozipTests/Geometry/SnapEngineTests.swift`:
+`Packages/SoozipGeometry/Tests/SoozipGeometryTests/SnapEngineTests.swift`:
 
 ```swift
 import Testing
-import CoreGraphics
-@testable import Soozip
+import Foundation
+@testable import SoozipGeometry
 
-private let canvas = CGSize(width: 1080, height: 1350)
-private let threshold: CGFloat = 8
+private let canvas = Size2(width: 1080, height: 1350)
+private let threshold: Double = 8
 
-private func frame(x: CGFloat, y: CGFloat,
-                   w: CGFloat = 100, h: CGFloat = 100,
-                   rot: CGFloat = 0) -> LayerFrame {
-    LayerFrame(center: CGPoint(x: x, y: y),
-               size: CGSize(width: w, height: h),
+private func frame(x: Double, y: Double,
+                   w: Double = 100, h: Double = 100,
+                   rot: Double = 0) -> LayerFrame {
+    LayerFrame(center: Vec2(x: x, y: y),
+               size: Size2(width: w, height: h),
                rotation: rot)
 }
 
@@ -775,38 +794,56 @@ private func frame(x: CGFloat, y: CGFloat,
                                     canvasSize: canvas, threshold: threshold)
     #expect(candidates.contains { $0.kind == .sizeMatch })
 }
+
+@Test func 레이어_43개에서도_후보_계산이_끝난다() {
+    // Phase 4의 60fps 요구를 위한 최소 확인. 실제 프레임 측정은 S1에서 한다.
+    let others = (0..<42).map { i in
+        frame(x: Double(100 + i * 20), y: Double(200 + i * 25))
+    }
+    let moving = frame(x: 543, y: 400)
+    let candidates = snapCandidates(for: moving, among: others,
+                                    canvasSize: canvas, threshold: threshold)
+    #expect(candidates.count >= 0)   // 크래시·무한루프 없이 반환되면 통과
+}
 ```
 
 - [ ] **Step 2: 테스트 실패 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/SnapEngineTests 2>&1 | tail -20
+cd /d/SQ/moumzip/Packages/SoozipGeometry
+swift test --filter SnapEngineTests 2>&1 | tail -20
 ```
 
 Expected: 컴파일 실패 — `cannot find 'snapCandidates' in scope`
 
 - [ ] **Step 3: 최소 구현**
 
-`Soozip/Core/Geometry/SnapEngine.swift`:
+`Packages/SoozipGeometry/Sources/SoozipGeometry/SnapEngine.swift`:
 
 ```swift
-import CoreGraphics
+import Foundation
 
-enum Axis { case horizontal, vertical }
+public enum Axis: Sendable { case horizontal, vertical }
 
-enum SnapKind { case alignment, equalSpacing, sizeMatch }
+public enum SnapKind: Sendable { case alignment, equalSpacing, sizeMatch }
 
-struct SnapCandidate: Equatable {
-    let axis: Axis
-    let value: CGFloat
-    let kind: SnapKind
+public struct SnapCandidate: Equatable, Sendable {
+    public let axis: Axis
+    public let value: Double
+    public let kind: SnapKind
+
+    public init(axis: Axis, value: Double, kind: SnapKind) {
+        self.axis = axis
+        self.value = value
+        self.kind = kind
+    }
 }
 
 /// 회전값이 0인 레이어의 축 정렬 바운딩 박스.
 private struct AABB {
-    let minX, midX, maxX: CGFloat
-    let minY, midY, maxY: CGFloat
-    let width, height: CGFloat
+    let minX, midX, maxX: Double
+    let minY, midY, maxY: Double
+    let width, height: Double
 
     init(_ f: LayerFrame) {
         minX = f.center.x - f.size.width / 2
@@ -830,10 +867,10 @@ private func isAxisAligned(_ f: LayerFrame) -> Bool {
 ///   회전체의 바운딩 박스는 실제 형태와 어긋나서, 박스를 맞춰도 눈에는 안 맞아 보인다.
 /// - `threshold`는 **화면 좌표 기준**으로 넘겨받는다. 논리좌표로 계산하면
 ///   줌 배율에 따라 감각이 달라진다.
-func snapCandidates(for moving: LayerFrame,
-                    among others: [LayerFrame],
-                    canvasSize: CGSize,
-                    threshold: CGFloat) -> [SnapCandidate] {
+public func snapCandidates(for moving: LayerFrame,
+                           among others: [LayerFrame],
+                           canvasSize: Size2,
+                           threshold: Double) -> [SnapCandidate] {
 
     guard isAxisAligned(moving) else { return [] }
 
@@ -904,29 +941,212 @@ func snapCandidates(for moving: LayerFrame,
 - [ ] **Step 4: 테스트 통과 확인**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:SoozipTests/SnapEngineTests 2>&1 | tail -20
+swift test --filter SnapEngineTests 2>&1 | tail -20
 ```
 
-Expected: 8개 테스트 전부 PASS
+Expected: 9개 테스트 PASS
 
-- [ ] **Step 5: 커밋**
+- [ ] **Step 5: 전체 테스트 실행**
 
 ```bash
-git add Soozip/Core/Geometry/SnapEngine.swift SoozipTests/Geometry/SnapEngineTests.swift
+swift test 2>&1 | tail -20
+```
+
+Expected: **26개 테스트 전부 PASS** (Vec2 4 + LayerFrame 6 + ResizeAnchor 7 + SnapEngine 9)
+
+- [ ] **Step 6: 커밋 및 푸시**
+
+```bash
+cd /d/SQ/moumzip
+git add Packages/
 git commit -m "feat: SnapEngine — 정렬·균등 간격·크기 일치 후보 계산"
+git push -u origin feat/geometry-package
+```
+
+**구간 A 완료.** 여기까지 Windows에서 끝난다.
+
+---
+
+# 구간 B — macOS 필수
+
+### Task 6: Xcode 프로젝트 생성과 패키지 통합
+
+**Files:**
+- Create: `Soozip.xcodeproj`
+- Create: `Soozip/App/SoozipApp.swift`
+- Create: `Soozip/Core/Geometry/CGInterop.swift`
+- Test: `SoozipTests/CGInteropTests.swift`
+
+**Interfaces:**
+- Consumes: `SoozipGeometry` 패키지 (구간 A)
+- Produces:
+  - 앱 타깃 `Soozip`, 테스트 타깃 `SoozipTests`
+  - `extension CGPoint { init(_ v: Vec2) }` · `extension Vec2 { init(_ p: CGPoint) }`
+  - `extension CGSize { init(_ s: Size2) }` · `extension Size2 { init(_ s: CGSize) }`
+  - Phase 3의 SwiftUI 뷰가 이 변환으로 기하 로직과 통신한다.
+
+- [ ] **Step 1: Mac에서 클론**
+
+```bash
+git clone https://github.com/rnqhstmd/soozip.git ~/dev/soozip
+cd ~/dev/soozip
+git checkout feat/geometry-package
+```
+
+- [ ] **Step 2: 패키지가 macOS에서도 통과하는지 확인**
+
+```bash
+cd ~/dev/soozip/Packages/SoozipGeometry
+swift test 2>&1 | tail -10
+```
+
+Expected: 26개 테스트 PASS. **Windows와 같은 결과가 나와야 한다** — 다르면 플랫폼 의존이 새어 들어간 것이므로 원인을 찾는다.
+
+- [ ] **Step 3: Xcode 프로젝트 생성**
+
+Xcode → File → New → Project → iOS → App
+
+| 항목 | 값 |
+|---|---|
+| Product Name | `Soozip` |
+| Interface | SwiftUI |
+| Language | Swift |
+| Storage | **None** (SwiftData는 Phase 1에서 직접 구성) |
+| Include Tests | **체크** |
+| 저장 위치 | `~/dev/soozip` (저장소 루트) |
+
+- [ ] **Step 4: 전역 설정 적용**
+
+프로젝트 → TARGETS → Soozip:
+
+| 설정 | 값 |
+|---|---|
+| Minimum Deployments | **iOS 17.0** |
+| Supported Destinations | iPhone (iPad는 미정 — 지금은 제외) |
+| iPhone Orientation | Portrait · Landscape Left · Landscape Right **(Upside Down 해제)** |
+
+Info.plist에 추가:
+
+```xml
+<key>UIUserInterfaceStyle</key>
+<string>Light</string>
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+```
+
+- [ ] **Step 5: 로컬 패키지 의존성 추가**
+
+1. Xcode → File → **Add Package Dependencies** → **Add Local...**
+2. `~/dev/soozip/Packages/SoozipGeometry` 선택
+3. TARGETS → Soozip → General → Frameworks, Libraries에 **SoozipGeometry** 추가
+
+- [ ] **Step 6: 폴더 구조 생성**
+
+```bash
+cd ~/dev/soozip/Soozip
+mkdir -p App Core/{Layout,Image,Rendering,Geometry,Haptics} \
+         Data/{Models,DraftStore,Repository} \
+         Features/{CollectionHome,CollectionDetail,Viewer,Search,Profile} \
+         Features/Editor/{Canvas,Selection,SmartGuide,Tools} \
+         Resources/Fonts Spikes
+```
+
+Xcode에서 각 디렉토리를 프로젝트에 추가한다(드래그 시 **"Create groups"**). 생성된 `SoozipApp.swift`를 `App/`으로 옮긴다.
+
+- [ ] **Step 7: 실패하는 테스트 작성**
+
+`SoozipTests/CGInteropTests.swift`:
+
+```swift
+import Testing
+import CoreGraphics
+import SoozipGeometry
+@testable import Soozip
+
+@Test func Vec2와_CGPoint는_상호변환된다() {
+    let v = Vec2(x: 123.5, y: 456.75)
+    let p = CGPoint(v)
+    #expect(p.x == 123.5)
+    #expect(p.y == 456.75)
+    #expect(Vec2(p) == v)
+}
+
+@Test func Size2와_CGSize는_상호변환된다() {
+    let s = Size2(width: 1080, height: 1350)
+    let cg = CGSize(s)
+    #expect(cg.width == 1080)
+    #expect(cg.height == 1350)
+    #expect(Size2(cg) == s)
+}
+
+@Test func 앱_타깃이_빌드되고_테스트가_실행된다() {
+    #expect(Bundle.main.bundleIdentifier != nil)
+}
+```
+
+- [ ] **Step 8: 테스트 실패 확인**
+
+```bash
+cd ~/dev/soozip
+xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | tail -20
+```
+
+Expected: 컴파일 실패 — `cannot find 'CGPoint(_:)' initializer`
+
+- [ ] **Step 9: 최소 구현**
+
+`Soozip/Core/Geometry/CGInterop.swift`:
+
+```swift
+import CoreGraphics
+import SoozipGeometry
+
+// SoozipGeometry는 CoreGraphics에 의존하지 않는다(Windows에서도 빌드되어야 한다).
+// SwiftUI와 잇는 지점이 여기 하나뿐이므로 변환 비용도 여기에만 있다.
+
+public extension CGPoint {
+    init(_ v: Vec2) { self.init(x: v.x, y: v.y) }
+}
+
+public extension Vec2 {
+    init(_ p: CGPoint) { self.init(x: Double(p.x), y: Double(p.y)) }
+}
+
+public extension CGSize {
+    init(_ s: Size2) { self.init(width: s.width, height: s.height) }
+}
+
+public extension Size2 {
+    init(_ s: CGSize) { self.init(width: Double(s.width), height: Double(s.height)) }
+}
+```
+
+- [ ] **Step 10: 테스트 통과 확인**
+
+```bash
+xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | tail -20
+```
+
+Expected: `TEST SUCCEEDED`, 3개 테스트 PASS
+
+- [ ] **Step 11: 커밋**
+
+```bash
+git add -A
+git commit -m "chore: Xcode 프로젝트 생성 + SoozipGeometry 패키지 통합"
 ```
 
 ---
 
-### Task 6: S1 스파이크 — 선택 UI 프로토타입과 60fps 실측
+### Task 7: S1 스파이크 — 선택 UI 프로토타입과 60fps 실측
 
 **Files:**
 - Create: `Soozip/Spikes/S1_GestureProbe.swift`
 - Modify: `Soozip/App/SoozipApp.swift` (스파이크 화면을 임시 루트로)
 
 **Interfaces:**
-- Consumes: Task 3~5의 `LayerFrame` · `ResizeAnchor` · `SnapEngine`
-- Produces: 실측 수치만. **코드는 Task 8 이후 폐기한다.**
+- Consumes: `SoozipGeometry` + Task 6의 `CGInterop`
+- Produces: 실측 수치만. **코드는 Task 9에서 폐기한다.**
 
 - [ ] **Step 1: 프로토타입 화면 작성**
 
@@ -934,13 +1154,14 @@ git commit -m "feat: SnapEngine — 정렬·균등 간격·크기 일치 후보 
 
 ```swift
 import SwiftUI
+import SoozipGeometry
 
 /// S1 스파이크 전용. Phase 3에서 정식 구현으로 대체하고 이 파일은 삭제한다.
 struct S1_GestureProbe: View {
     @State private var frames: [LayerFrame] = (0..<43).map { i in
-        LayerFrame(center: CGPoint(x: 120 + CGFloat(i % 7) * 140,
-                                   y: 150 + CGFloat(i / 7) * 180),
-                   size: CGSize(width: 100, height: 100),
+        LayerFrame(center: Vec2(x: 120 + Double(i % 7) * 140,
+                                y: 150 + Double(i / 7) * 180),
+                   size: Size2(width: 100, height: 100),
                    rotation: 0)
     }
     @State private var selected: Int? = nil
@@ -948,7 +1169,7 @@ struct S1_GestureProbe: View {
     @State private var pan: CGSize = .zero
     @State private var activeSnaps: [SnapCandidate] = []
 
-    private let canvasSize = CGSize(width: 1080, height: 1350)
+    private let canvasSize = Size2(width: 1080, height: 1350)
 
     var body: some View {
         GeometryReader { geo in
@@ -1002,9 +1223,8 @@ struct S1_GestureProbe: View {
                     pan = value.translation
                     return
                 }
-                let logical = CGPoint(x: value.location.x / scale,
-                                      y: value.location.y / scale)
-                frames[s].center = logical
+                frames[s].center = Vec2(x: value.location.x / scale,
+                                        y: value.location.y / scale)
 
                 let others = frames.enumerated()
                     .filter { $0.offset != s }
@@ -1012,7 +1232,7 @@ struct S1_GestureProbe: View {
                 activeSnaps = snapCandidates(for: frames[s],
                                              among: others,
                                              canvasSize: canvasSize,
-                                             threshold: 8 / scale)
+                                             threshold: 8 / Double(scale))
             }
             .onEnded { _ in activeSnaps = [] }
     }
@@ -1060,7 +1280,7 @@ import SwiftUI
 struct SoozipApp: App {
     var body: some Scene {
         WindowGroup {
-            S1_GestureProbe()   // Phase 0 전용. Task 8에서 제거한다.
+            S1_GestureProbe()   // Phase 0 전용. Task 9에서 제거한다.
         }
     }
 }
@@ -1092,13 +1312,13 @@ struct SoozipApp: App {
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add Soozip/Spikes/S1_GestureProbe.swift Soozip/App/SoozipApp.swift docs/reports/2026-08-10-spike-results.md
+git add -A
 git commit -m "spike: S1 제스처·선택 UI·스마트 가이드 실측"
 ```
 
 ---
 
-### Task 7: S2 스파이크 — SwiftData + CloudKit 실기기 동기화
+### Task 8: S2 스파이크 — SwiftData + CloudKit 실기기 동기화
 
 **Files:**
 - Create: `Soozip/Spikes/S2_CloudKitProbe.swift`
@@ -1217,7 +1437,7 @@ import SwiftData
 struct SoozipApp: App {
     var body: some Scene {
         WindowGroup {
-            S2_CloudKitProbe()   // Phase 0 전용. Task 8에서 제거한다.
+            S2_CloudKitProbe()   // Phase 0 전용. Task 9에서 제거한다.
         }
         .modelContainer(for: [ProbeCollection.self, ProbeCanvas.self])
     }
@@ -1242,30 +1462,32 @@ struct SoozipApp: App {
 - [ ] **Step 6: 커밋**
 
 ```bash
-git add Soozip/Spikes/S2_CloudKitProbe.swift Soozip/App/SoozipApp.swift docs/reports/2026-08-10-spike-results.md
+git add -A
 git commit -m "spike: S2 SwiftData+CloudKit 실기기 2대 동기화 검증"
 ```
 
 ---
 
-### Task 8: S3 스파이크 — 폰트 번들 용량과 정리
+### Task 9: S3 스파이크 — 폰트 번들과 스파이크 정리
 
 **Files:**
 - Create: `Soozip/Resources/Fonts/` (폰트 5종)
+- Create: `Soozip/Core/Layout/AppFont.swift`
 - Modify: `Soozip/Info.plist`
-- Modify: `Soozip/App/SoozipApp.swift` (스파이크 제거, 빈 화면으로 복귀)
+- Modify: `Soozip/App/SoozipApp.swift` (스파이크 제거)
 - Delete: `Soozip/Spikes/` 전체
 - Test: `SoozipTests/FontLoadingTests.swift`
 
 **Interfaces:**
 - Consumes: 없음
 - Produces:
-  - `enum AppFont: String, CaseIterable { case pretendard, gowunBatang, gowunDodum, nanumPen, playfair }`
-  - `var postScriptName: String` — `layoutJSON`의 `font` 값과 실제 폰트를 잇는다. Phase 5의 텍스트 도구가 사용한다.
+  - `enum AppFont: String, CaseIterable, Codable { case pretendard, gowunBatang, gowunDodum, nanumPen, playfair }`
+  - `var postScriptName: String` · `var displayName: String`
+  - `layoutJSON`의 `font` 값과 실제 폰트를 잇는다. Phase 5의 텍스트 도구가 사용한다.
 
 - [ ] **Step 1: 폰트 5종 수집 및 라이선스 확인**
 
-전부 SIL OFL인지 **배포처의 라이선스 원문(`OFL.txt`)으로 확인**하고, 그 원문을 `Soozip/Resources/Fonts/licenses/`에 함께 보관한다. Phase 9의 설정 > 정보 고지에 쓴다.
+전부 SIL OFL인지 **배포처의 라이선스 원문(`OFL.txt`)으로 확인**하고, 원문을 `Soozip/Resources/Fonts/licenses/`에 보관한다. Phase 9의 설정 > 정보 고지에 쓴다.
 
 | 폰트 | 출처 |
 |---|---|
@@ -1315,9 +1537,7 @@ done
 du -ch Soozip/Resources/Fonts/*-Subset.ttf | tail -1
 ```
 
-서브셋 후에도 10MB를 넘으면 **폰트를 3종으로 줄이거나 ODR로 전환**하고 v4 설계서 §5.5와 `context/editor/README.md`를 수정한다.
-
-원본을 서브셋으로 교체했다면 원본 파일은 지운다.
+서브셋 후에도 10MB를 넘으면 **폰트를 3종으로 줄이거나 ODR로 전환**하고 v4 설계서 §5.5와 `context/editor/README.md`를 수정한다. 원본을 서브셋으로 교체했다면 원본은 지운다.
 
 - [ ] **Step 4: Info.plist 등록**
 
@@ -1325,12 +1545,14 @@ du -ch Soozip/Resources/Fonts/*-Subset.ttf | tail -1
 <key>UIAppFonts</key>
 <array>
     <string>Pretendard-Regular.otf</string>
-    <string>GowunBatang-Subset.ttf</string>
-    <string>GowunDodum-Subset.ttf</string>
-    <string>NanumPen-Subset.ttf</string>
+    <string>GowunBatang-Regular.ttf</string>
+    <string>GowunDodum-Regular.ttf</string>
+    <string>NanumPenScript-Regular.ttf</string>
     <string>PlayfairDisplay-Regular.ttf</string>
 </array>
 ```
+
+Step 3에서 서브셋했다면 파일명을 `-Subset.ttf`로 맞춘다.
 
 - [ ] **Step 5: 실패하는 테스트 작성**
 
@@ -1355,8 +1577,7 @@ import UIKit
         let uiFont = UIFont(name: font.postScriptName, size: 20)!
         let attributed = NSAttributedString(string: sample,
                                             attributes: [.font: uiFont])
-        let size = attributed.size()
-        #expect(size.width > 0)
+        #expect(attributed.size().width > 0)
     }
 }
 
@@ -1389,7 +1610,7 @@ enum AppFont: String, CaseIterable, Codable {
     case nanumPen
     case playfair
 
-    /// 실제 서브셋 결과의 PostScript 이름으로 교체할 것.
+    /// 실제 파일의 PostScript 이름으로 교체할 것.
     /// 확인 방법: `fc-scan --format "%{postscriptname}\n" <파일>`
     var postScriptName: String {
         switch self {
@@ -1447,17 +1668,20 @@ struct SoozipApp: App {
 
 Xcode에서 `Spikes` 그룹 참조도 제거한다.
 
-**`Core/Geometry/`의 세 파일과 테스트는 남긴다.** 검증된 순수 로직이며 Phase 3~4가 그 위에 세워진다.
+**`Packages/SoozipGeometry/`와 `Soozip/Core/Geometry/CGInterop.swift`는 남긴다.** 검증된 자산이며 Phase 3~4가 그 위에 세워진다.
 
 - [ ] **Step 10: 전체 테스트 실행**
 
 ```bash
-xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | tail -30
+cd ~/dev/soozip/Packages/SoozipGeometry && swift test 2>&1 | tail -5
+cd ~/dev/soozip && xcodebuild test -scheme Soozip -destination 'platform=iOS Simulator,name=iPhone 16' 2>&1 | tail -20
 ```
 
-Expected: `TEST SUCCEEDED`, 총 24개 테스트 (LayerFrame 5 + ResizeAnchor 7 + SnapEngine 8 + Font 3 + Smoke 1)
+Expected:
+- 패키지 **26개** 테스트 PASS
+- 앱 **6개** 테스트 PASS (CGInterop 3 + Font 3)
 
-- [ ] **Step 11: 커밋**
+- [ ] **Step 11: 커밋 및 푸시**
 
 ```bash
 git add -A
@@ -1471,12 +1695,18 @@ git push
 
 Phase 1로 넘어가기 전에 전부 확인한다.
 
-- [ ] macOS에서 `xcodebuild test`가 성공하고 24개 테스트가 통과한다
+**구간 A (Windows)**
+- [ ] `swift test`가 Windows에서 성공하고 26개 테스트가 통과한다
+- [ ] `SoozipGeometry`에 CoreGraphics·SwiftUI import가 하나도 없다
+
+**구간 B (macOS)**
+- [ ] 같은 패키지 테스트가 macOS에서도 26개 통과한다 (플랫폼 의존이 새지 않았다)
+- [ ] `xcodebuild test`가 성공하고 앱 테스트 6개가 통과한다
 - [ ] `docs/reports/2026-08-10-spike-results.md`에 S1·S2·S3의 **실측 수치**가 기록되어 있다 ("잘 동작함" 같은 서술이 아니라 숫자)
-- [ ] S1의 60fps 기준 결과가 기록되고, 미달이면 대응책이 결정되어 v4 설계서 §5.8.4에 반영되었다
+- [ ] S1의 60fps 결과가 기록되고, 미달이면 대응책이 v4 설계서 §5.8.4에 반영되었다
 - [ ] S2에서 **초안 폴더가 동기화되지 않음**이 실기기 2대로 확인되었다
-- [ ] S3에서 폰트 5종 합계 용량이 기록되고, 10MB 초과 시 대응이 결정되어 §5.5에 반영되었다
-- [ ] `Soozip/Spikes/`가 삭제되었고 `Core/Geometry/`는 남아 있다
+- [ ] S3에서 폰트 5종 합계 용량이 기록되고, 10MB 초과 시 대응이 §5.5에 반영되었다
+- [ ] `Soozip/Spikes/`가 삭제되었고 `Packages/SoozipGeometry/`와 `CGInterop.swift`는 남아 있다
 - [ ] 전역 제약(iOS 17 / 방향 3종 / Light 고정)이 프로젝트 설정에 적용되었다
 - [ ] 모든 변경이 커밋되고 원격에 푸시되었다
 
