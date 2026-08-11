@@ -162,3 +162,13 @@ private func makeInMemoryContext() throws -> ModelContext {
     context.insert(CanvasPhoto())
     try context.save()
 }
+
+// MARK: - 스키마 SSOT는 정식 모델만 담는다 (앱 배선 회귀 방지)
+
+@Test func 스키마는_정식_모델_3종만_담는다() {
+    // Phase 0의 프로브 모델(`ProbeCollection`·`ProbeCanvas`)이 앱 컨테이너에 남으면
+    // 정식 모델이 통째로 빠진 채 앱이 뜬다. **증상이 컴파일이 아니라 런타임에야
+    // 나오는** 종류라 선언 자체를 테스트로 못박는다.
+    let names = Set(Schema(SoozipSchema.models).entities.map(\.name))
+    #expect(names == ["Collection", "Canvas", "CanvasPhoto"])
+}

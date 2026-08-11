@@ -64,6 +64,10 @@ struct S2_CloudKitProbe: View {
             .toolbar { Button("추가") { addSample() } }
             .onAppear { checkDraftFolder() }
         }
+        // **프로브 모델은 앱 컨테이너에 싣지 않는다.** 폐기 예정 타입이 정식
+        // 스키마에 끼면 첫 심사 후 스키마 동결 대상이 되고, 그때는 뺄 수 없다.
+        // 컨테이너를 여기로 내려 두면 이 파일을 지우는 것만으로 정리가 끝난다.
+        .modelContainer(for: [ProbeCollection.self, ProbeCanvas.self])
     }
 
     private func addSample() {
