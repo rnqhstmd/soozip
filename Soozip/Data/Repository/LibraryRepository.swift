@@ -48,10 +48,7 @@ struct LibraryRepository {
     @discardableResult
     func createCollection(name: String, now: Date) throws -> Collection {
         // 검증이 insert보다 먼저다. 뒤에 두면 거부된 입력의 부분 상태가 남는다.
-        guard InputLimits.collectionName.contains(name.count) else {
-            throw RepositoryError.collectionNameOutOfRange(
-                length: name.count, allowed: InputLimits.collectionName)
-        }
+        try validate(collectionName: name)
 
         let collection = Collection()
         collection.name = name
@@ -71,6 +68,41 @@ struct LibraryRepository {
             SortDescriptor(\.sortIndex, order: .forward),
             SortDescriptor(\.createdAt, order: .forward)
         ]))
+    }
+
+    /// 모음집 이름을 바꾼다. 정렬·표지는 건드리지 않는다.
+    ///
+    /// 길이 검증이 `createCollection`과 **같은 함수**를 쓴다. 두 경로가 각자 검증하면
+    /// 한쪽만 느슨해졌을 때 그 경로가 우회로가 된다.
+    func renameCollection(_ collection: Collection, to name: String) throws {
+        try validate(collectionName: name)
+        collection.name = name
+        try context.save()
+    }
+
+    /// 보이는 순서 그대로 받아 `sortIndex`를 0..n-1로 다시 매긴다.
+    ///
+    /// **인덱스 이동(`from:to:`)이 아니라 배열 전체를 받는 이유**: 재배치의 계약이
+    /// "이 순서로 굽는다"라서 시그니처에 그대로 드러나고, 기존 값 사이에 끼워 넣지
+    /// 않아 두 기기가 각자 재배치해도 값이 촘촘해지다 겹치는 일이 없다.
+    func reorderCollections(_ ordered: [Collection]) throws {
+        for (index, collection) in ordered.enumerated() where collection.sortIndex != index {
+            collection.sortIndex = index
+        }
+        try context.save()
+    }
+
+    /// 사용자가 고른 캔버스를 모음집의 대표로 지정한다.
+    ///
+    /// 소속 확인을 리포지토리가 하고 대입은 `CoverPolicy`가 한다 — 후보 목록을
+    /// 아는 쪽과 표지 규칙을 아는 쪽이 다르기 때문이다.
+    func setCover(_ canvas: Canvas, of collection: Collection) throws {
+        let candidates = try canvasesFetched(in: collection)
+        guard CoverPolicy.designate(canvas, for: collection, candidates: candidates) else {
+            throw RepositoryError.canvasNotInCollection(
+                canvasID: canvas.id, collectionID: collection.id)
+        }
+        try context.save()
     }
 
     /// 모음집을 지운다. 소속 캔버스와 그 사진은 `deleteRule: .cascade`가 전이로
@@ -182,6 +214,14 @@ struct LibraryRepository {
     }
 
     // MARK: - 내부
+
+    /// 모음집 이름 길이 검증(BR-7). 생성과 이름 변경이 이 하나를 공유한다.
+    private func validate(collectionName name: String) throws {
+        guard InputLimits.collectionName.contains(name.count) else {
+            throw RepositoryError.collectionNameOutOfRange(
+                length: name.count, allowed: InputLimits.collectionName)
+        }
+    }
 
     /// 제목 길이 검증(AC-30, BR-7). 하한이 0이라 빈 제목은 통과한다 —
     /// 제목은 선택이고 비면 목록에서 날짜로 표시한다(BR-2).

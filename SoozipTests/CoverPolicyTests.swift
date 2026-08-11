@@ -98,3 +98,40 @@ private let uuidB = UUID(uuidString: "BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB")!
     let canvas = makeCanvas(id: uuidA, createdAt: Date())
     #expect(!CoverPolicy.isConsistent(collection, candidates: [canvas]))
 }
+
+// MARK: - designate — 사용자가 대표를 직접 고른다 (AC-8·9)
+
+@Test func 후보에_있는_캔버스는_대표로_지정된다() {
+    let a = makeCollection(coverCanvasID: "")
+    let older = makeCanvas(id: uuidA, createdAt: Date(timeIntervalSince1970: 0))
+    let newer = makeCanvas(id: uuidB, createdAt: Date(timeIntervalSince1970: 1000))
+
+    let 성공 = CoverPolicy.designate(older, for: a, candidates: [older, newer])
+
+    // 더 오래된 쪽을 골라야 "최신 우선이 사용자 지정을 이기지 않는다"가 측정된다.
+    #expect(성공)
+    #expect(a.coverCanvasID == uuidA.uuidString)
+}
+
+@Test func 후보에_없는_캔버스는_대표로_지정되지_않는다() {
+    // 다른 모음집의 캔버스가 표지가 되면 그것이 정확히 Phase 1이 불변식으로 막은
+    // 상태다 — "표지가 이 모음집에 없는 캔버스를 가리킨다".
+    let a = makeCollection(coverCanvasID: uuidA.uuidString)
+    let 내것 = makeCanvas(id: uuidA, createdAt: Date(timeIntervalSince1970: 0))
+    let 남의것 = makeCanvas(id: uuidB, createdAt: Date(timeIntervalSince1970: 1000))
+
+    let 성공 = CoverPolicy.designate(남의것, for: a, candidates: [내것])
+
+    #expect(!성공)
+    #expect(a.coverCanvasID == uuidA.uuidString)   // 그대로다
+}
+
+@Test func 지정된_표지는_불변식을_만족한다() {
+    let a = makeCollection(coverCanvasID: "")
+    let older = makeCanvas(id: uuidA, createdAt: Date(timeIntervalSince1970: 0))
+    let newer = makeCanvas(id: uuidB, createdAt: Date(timeIntervalSince1970: 1000))
+
+    _ = CoverPolicy.designate(older, for: a, candidates: [older, newer])
+
+    #expect(CoverPolicy.isConsistent(a, candidates: [older, newer]))
+}
