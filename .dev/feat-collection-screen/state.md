@@ -15,7 +15,7 @@ args: "phase6시작"
 flags: ""
 started: 2026-08-11T01:35:00
 warnings-baseline: 0
-current-step: "phase-review"
+current-step: "phase-complete — PR 생성"
 phases:
   setup: completed
   requirements: completed
@@ -88,8 +88,21 @@ execution-log:
     result: "spec-review PASS — AC-1~19·22~27은 Phase 6 테스트가 직접 덮고, AC-20·21은 Phase 1 테스트가 덮는다. AC-28만 검증 불가(기록됨)"
   - phase: review
     finding: "[문서 위험] AC 번호가 Phase 1과 Phase 6 사이에서 충돌 — LibraryRepositoryTests에 AC-11~18이 두 뜻으로 공존한다. 다음 Phase에서 섹션 머리에 출처(P1/P6)를 붙이기로 하고 이번엔 diff를 불리지 않기로 결정"
+  - phase: review
+    result: "/code-review high — 8건(CRITICAL 1 / MEDIUM 3 / LOW 4). 전부 유효, 오탐 0건. 8건 모두 수정"
+  - phase: review
+    finding: "[CRITICAL·수정] 릴리스 빌드가 컴파일되지 않았다. @ToolbarContentBuilder 본문을 #if DEBUG로만 채워 릴리스에서 비었고, ToolbarContentBuilder에는 buildBlock()이 없다. Debug 빌드도 237개 테스트도 전부 초록이었다"
+  - phase: review
+    result: "재발 방지 — scripts/test.sh에 릴리스 빌드 추가. AC-28을 '자동 검증 불가'로 기록해 놓고 릴리스 빌드를 한 번도 안 돌린 것이 근본 원인이라, 검증 스크립트의 구멍을 메웠다"
+  - phase: review
+    finding: "[MEDIUM·수정] .constant 바인딩으로 삭제 다이얼로그에서 빠져나올 수 없었다 / 고스트 힌트가 되살아났다(정책은 맞고 배선이 빠짐) / 카드마다 Canvas 전량 fetch가 돌았다"
+  - phase: review
+    finding: "[LOW·수정] 메인 액터 디스크 I/O · rename 롤백 부재 · 재배치·삭제 실패 무시 · 공백만 있는 이름 통과"
+  - phase: complete
+    gate: verify
+    result: "PASS — 237개 통과, Debug·Release 양쪽 빌드 성공, 소스 경고 0건. 시뮬레이터 빈 상태 재확인"
 next-task:
-  id: phase-complete
+  id: PR
   step: RED
   scope: "verify 게이트 → 인수 검증 → PR"
   notes: "모음집이 있는 상태의 화면은 사람이 한 번 만져 봐야 한다 — 시뮬레이터 탭 수단이 없어 빈 상태만 확인했다"

@@ -51,6 +51,19 @@ else
 fi
 
 echo
+echo "=== 릴리스 빌드 ==="
+# **Debug만 돌리면 릴리스 전용 컴파일 실패를 못 잡는다.** 실제로 `#if DEBUG`로
+# 감싼 툴바 항목 때문에 릴리스가 통째로 깨진 적이 있는데, Debug 빌드도 테스트도
+# 전부 초록이었다 — 코드 리뷰가 아니었으면 심사 직전에야 드러났을 것이다.
+if OUT=$(xcodebuild build -scheme Soozip -configuration Release -destination "$DEST" 2>&1); then
+    echo "빌드 성공"
+else
+    echo "FAILED"
+    echo "$OUT" | grep -E "error:" | head -10
+    FAILED=1
+fi
+
+echo
 if [ "$FAILED" -ne 0 ]; then
     echo "테스트 실패"
     exit 1

@@ -9,7 +9,8 @@ import SwiftData
 
     /// 관계가 아니라 String인 이유 (v4 §7.1): 대표 캔버스로 관계를 하나 더 걸면
     /// CloudKit 순환 참조 구성이 까다로워진다.
-    /// 여기에 직접 대입하지 마라 — 유일한 대입 지점은 `CoverPolicy.reconcile`이다.
+    /// 여기에 직접 대입하지 마라 — 유일한 대입 지점은 `CoverPolicy`다
+    /// (`reconcile` 자동 재계산 · `designate` 사용자 지정).
     var coverCanvasID: String = ""
 
     // 역관계는 Canvas.collection 쪽에만 선언한다. 양쪽에 걸면 SwiftData가
