@@ -12,17 +12,7 @@ import SoozipLayout
 // 비면 pruneOrphans는 전 초안을 고아로 판정한다. 조회 **실패**와 모음집이 정말
 // **0개**인 것을 구분하지 못하면 사용자 작업물이 전량 삭제된다.
 
-// MARK: - 하네스
-
-/// 테스트마다 새 임시 폴더를 쓴다. 클로저를 벗어나면 지운다 —
-/// 실패해도 남지 않도록 `defer`로 건다.
-@MainActor
-private func withDraftStore(_ body: (DraftStore) throws -> Void) throws {
-    let root = URL.temporaryDirectory.appending(path: "soozip-tests-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: root) }
-    try body(DraftStore(root: root))
-}
+// 하네스(`withDraftStore`)는 `TestContainer.swift` 공용으로 옮겼다 — 두 파일이 쓴다.
 
 /// 초안 1개를 만든다. `updatedAt`을 직접 정해야 방치 기간을 잴 수 있어
 /// `create`의 `now`를 그대로 쓴다(생성 시각 = 마지막 수정 시각).

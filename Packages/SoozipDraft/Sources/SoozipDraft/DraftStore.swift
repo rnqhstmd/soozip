@@ -146,8 +146,14 @@ public struct DraftStore: Sendable {
     }
 
     /// 해당 모음집의 초안. **초안은 모음집당 1개**다(v4 §6.5).
+    ///
+    /// 소속 비교는 `pruneOrphans`와 같은 이유로 대소문자를 구분하지 않는다 —
+    /// 식별자는 UUID 문자열이라 표기가 어느 쪽이든 같은 값이다. 여기서 표기가
+    /// 어긋나면 **초안이 있는데도 "이어서 만들까요?" 배너가 영영 안 뜬다.**
+    /// 정리 경로와 달리 데이터가 사라지지는 않지만 증상이 조용해 더 늦게 발견된다.
     public func draft(forCollection collectionID: String) throws -> Draft? {
-        try all().first { $0.meta.collectionID == collectionID }
+        let target = collectionID.uppercased()
+        return try all().first { $0.meta.collectionID.uppercased() == target }
     }
 
     // MARK: layout.json

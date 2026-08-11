@@ -23,8 +23,9 @@ private let 깨진이미지 = Data([0xFF, 0xFF])
 private func 성한것만통과(_ data: Data) -> Bool { data == 성한이미지 }
 
 @MainActor
-private func canvasInput(createdAt: Date, renderedPNG: Data? = nil) -> CanvasInput {
-    CanvasInput(aspect: .post, createdAt: createdAt, renderedPNG: renderedPNG)
+private func canvasInput(createdAt: Date, title: String = "",
+                         renderedPNG: Data? = nil) -> CanvasInput {
+    CanvasInput(aspect: .post, title: title, createdAt: createdAt, renderedPNG: renderedPNG)
 }
 
 @MainActor
@@ -209,5 +210,104 @@ private extension CarouselItem {
         let p = presenter(library)
         #expect(p.card(for: a).canvasCount == 1)
         #expect(p.card(for: b).canvasCount == 3)
+    }
+}
+
+// MARK: - AC-15·16·17: 상세의 캔버스 정렬
+
+@Test @MainActor func 상세는_기본이_최신순이다() throws {
+    try withLibrary { library, _ in
+        let anchor = try testAnchor()
+        let a = try library.createCollection(name: "여행", now: anchor)
+        try library.createCanvas(canvasInput(createdAt: try day(1, from: anchor),
+                                             title: "가운데"), in: a, now: anchor)
+        try library.createCanvas(canvasInput(createdAt: try day(9, from: anchor),
+                                             title: "최신"), in: a, now: anchor)
+        try library.createCanvas(canvasInput(createdAt: anchor, title: "최고참"),
+                                 in: a, now: anchor)
+
+        let p = presenter(library)
+        #expect(p.canvases(in: a).map(\.title) == ["최신", "가운데", "최고참"])
+    }
+}
+
+@Test @MainActor func 오래된순으로_전환하면_정확히_뒤집힌다() throws {
+    try withLibrary { library, _ in
+        let anchor = try testAnchor()
+        let a = try library.createCollection(name: "여행", now: anchor)
+        try library.createCanvas(canvasInput(createdAt: try day(1, from: anchor),
+                                             title: "가운데"), in: a, now: anchor)
+        try library.createCanvas(canvasInput(createdAt: try day(9, from: anchor),
+                                             title: "최신"), in: a, now: anchor)
+        try library.createCanvas(canvasInput(createdAt: anchor, title: "최고참"),
+                                 in: a, now: anchor)
+
+        let p = presenter(library)
+        #expect(p.canvases(in: a, order: .oldestFirst).map(\.title)
+                == p.canvases(in: a).map(\.title).reversed())
+    }
+}
+
+@Test @MainActor func 상세에_다른_모음집의_캔버스는_섞이지_않는다() throws {
+    try withLibrary { library, _ in
+        let anchor = try testAnchor()
+        let a = try library.createCollection(name: "가", now: anchor)
+        let b = try library.createCollection(name: "나", now: anchor)
+        try library.createCanvas(canvasInput(createdAt: anchor, title: "A것"), in: a, now: anchor)
+        try library.createCanvas(canvasInput(createdAt: anchor, title: "B것"), in: b, now: anchor)
+
+        let p = presenter(library)
+        #expect(p.canvases(in: a).map(\.title) == ["A것"])
+        #expect(p.canvases(in: b).map(\.title) == ["B것"])
+    }
+}
+
+// MARK: - AC-18·19: 초안 배너
+
+@Test @MainActor func 그_모음집에_초안이_있으면_배너가_노출된다() throws {
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            try store.create(canvasID: UUID().uuidString,
+                             collectionID: a.id.uuidString, aspect: .post, now: anchor)
+
+            let banner = DraftBannerPolicy(store: store)
+            #expect(try banner.shouldShow(for: a))
+        }
+    }
+}
+
+@Test @MainActor func 다른_모음집의_초안은_배너를_띄우지_않는다() throws {
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "가", now: anchor)
+            let b = try library.createCollection(name: "나", now: anchor)
+            try store.create(canvasID: UUID().uuidString,
+                             collectionID: b.id.uuidString, aspect: .post, now: anchor)
+
+            let banner = DraftBannerPolicy(store: store)
+            #expect(!(try banner.shouldShow(for: a)))
+            #expect(try banner.shouldShow(for: b))
+        }
+    }
+}
+
+@Test @MainActor func 소문자로_기록된_초안도_같은_모음집으로_인식된다() throws {
+    // Phase 2에서 pruneOrphans만 정규화했고 draft(forCollection:)은 `==` 그대로였다.
+    // 여기서는 데이터 손실이 아니라 **배너가 영영 안 뜨는** 것으로 나타나
+    // 증상이 더 조용하다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            try store.create(canvasID: UUID().uuidString,
+                             collectionID: a.id.uuidString.lowercased(),
+                             aspect: .post, now: anchor)
+
+            let banner = DraftBannerPolicy(store: store)
+            #expect(try banner.shouldShow(for: a))
+        }
     }
 }
