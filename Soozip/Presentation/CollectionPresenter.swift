@@ -78,6 +78,13 @@ struct CollectionPresenter {
             cover: coverArt(of: collection, among: canvases))
     }
 
+    /// 상세 화면의 캔버스 목록. 정렬 자체는 리포지토리가 한다 —
+    /// 여기서 다시 정렬하면 목록 순서 규칙이 두 곳으로 갈라진다.
+    func canvases(in collection: Collection,
+                  order: CanvasOrder = .newestFirst) -> [Canvas] {
+        library.canvases(in: collection, order: order)
+    }
+
     // MARK: - 내부
 
     /// 표지 폴백 3단계: 지정 → 최근 → 단색.

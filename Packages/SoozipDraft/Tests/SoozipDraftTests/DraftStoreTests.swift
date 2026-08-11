@@ -249,6 +249,18 @@ private let week: TimeInterval = 7 * 24 * 3600
     }
 }
 
+@Test func 초안_조회도_대소문자를_구분하지_않는다() throws {
+    // pruneOrphans와 같은 계약이다. 여기서 표기가 어긋나면 데이터가 사라지지는
+    // 않지만 "이어서 만들까요?" 배너가 영영 안 떠서 증상이 더 조용하다.
+    try withTempStore { store in
+        let id = UUID().uuidString                      // 대문자
+        try store.create(canvasID: "c1", collectionID: id.lowercased(),
+                         aspect: .post, now: Date(timeIntervalSince1970: 0))
+
+        #expect(try store.draft(forCollection: id) != nil)
+    }
+}
+
 @Test func 소속_비교는_대소문자를_구분하지_않는다() throws {
     // 식별자는 UUID 문자열이고 `UUID.uuidString`은 대문자를 내지만
     // `UUID(uuidString:)`은 소문자도 받는다. JSON·URL·`description`을 거치면

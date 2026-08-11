@@ -15,7 +15,7 @@ args: "phase6시작"
 flags: ""
 started: 2026-08-11T01:35:00
 warnings-baseline: 0
-current-step: "RGR T3: RED"
+current-step: "RGR T6: 뷰 배선"
 phases:
   setup: completed
   requirements: completed
@@ -32,9 +32,9 @@ steps:
   implement:
     - "RGR T1 리포지토리 확장 + CoverPolicy.designate": { red: completed, green: completed, refactor: completed, test-count: 213 }
     - "RGR T2 카드 표시값 + 표지 폴백": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 223 }
-    - "RGR T3 상세 정렬 + 초안 배너 + 케이싱": pending
-    - "RGR T4 삭제 경고": pending
-    - "RGR T5 고스트 힌트": pending
+    - "RGR T3 상세 정렬 + 초안 배너 + 케이싱": { red: completed, green: completed, refactor: completed, test-count: 230 }
+    - "RGR T4 삭제 경고": { red: completed, green: completed, refactor: skipped, test-count: 234 }
+    - "RGR T5 고스트 힌트": { red: completed, green: completed, refactor: skipped, test-count: 237 }
     - "RGR T6 SwiftUI 뷰 + 앱 루트 + DEBUG 진입점": pending
 execution-log:
   - phase: setup
@@ -65,11 +65,17 @@ execution-log:
     decision: "[+]를 CarouselItem의 케이스로 둔다 — 뷰가 알아서 앞에 붙이게 하면 '맨 좌측 고정'이 테스트 밖 규칙이 된다"
   - phase: implement
     decision: "card(for:)는 던지지 않는다 — 표시 경로라 조회 실패를 빈 목록으로 접는다. 던지면 @Query가 도는 화면마다 오류 처리가 번진다"
+  - phase: implement
+    result: "T3 완료 — canvases(in:order:) 위임 + DraftBannerPolicy. 케이싱 결함 실제 재현 후 draft(forCollection:) 정규화(패키지 테스트 포함). 230개"
+  - phase: implement
+    result: "T3 REFACTOR — withDraftStore를 TestContainer 공용으로 이동(두 파일이 쓴다)"
+  - phase: implement
+    result: "T4·T5 완료 — DeletionPrompt + GhostHintPolicy. 둘 다 순수 값이라 문구와 노출 판정을 값이 들고 있다. 237개(앱 145), 소스 경고 0건"
 next-task:
-  id: T3
+  id: T6
   step: RED
-  scope: "상세 표시값(캔버스 정렬) + 초안 배너 판정 + DraftStore 케이싱 정규화"
-  ac: "AC-15~19"
-  spec: ".dev/feat-collection-screen/design.md §6"
-  notes: "draft(forCollection:)이 == 비교라 Phase 2와 같은 케이싱 결함이 남아 있다. 여기서는 '배너가 영영 안 뜸'으로 나타난다 — RED로 재현 후 정규화"
-  verify-command: "./scripts/test.sh  # 현재 223개 (패키지 91 + 앱 132)"
+  scope: "SwiftUI 뷰 + 앱 루트 교체 + DEBUG 스파이크 진입점"
+  ac: "AC-20·21·28 (뷰 자체는 테스트 밖)"
+  spec: ".dev/feat-collection-screen/design.md §8"
+  notes: "T1~T5가 표시값을 전부 만들어 뒀다. T6에서 새 분기가 필요해지면 그만큼 검증 밖으로 새는 것이므로 T1~T5로 되돌려 보낸다. AC-28은 자동 검증 불가 — 위험 수용 기록 예정"
+  verify-command: "./scripts/test.sh  # 현재 237개 (패키지 92 + 앱 145)"

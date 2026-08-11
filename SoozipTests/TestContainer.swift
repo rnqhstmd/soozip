@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
+import SoozipDraft
 @testable import Soozip
 
 // 리포지토리 테스트의 공용 하네스.
@@ -62,6 +63,16 @@ func withStats(sourceLocation: SourceLocation = #_sourceLocation,
     try withLibrary(sourceLocation: sourceLocation) { library, context in
         try body(library, StatsRepository(context: context, calendar: testCalendar))
     }
+}
+
+/// 초안 저장소 하네스. 테스트마다 새 임시 폴더를 쓰고, 클로저를 벗어나면 지운다 —
+/// 실패해도 남지 않도록 `defer`로 건다.
+@MainActor
+func withDraftStore(_ body: (DraftStore) throws -> Void) throws {
+    let root = URL.temporaryDirectory.appending(path: "soozip-tests-\(UUID().uuidString)")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+    try body(DraftStore(root: root))
 }
 
 // MARK: - 시간 픽스처
