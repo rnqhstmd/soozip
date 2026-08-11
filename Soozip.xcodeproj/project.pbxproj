@@ -11,6 +11,7 @@
 		19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27A62890829577BC2C0158FD /* CGInteropTests.swift */; };
 		1C2EBD327D3077BC5540C895 /* CoverPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FA940B09932DE75C53756C1 /* CoverPolicy.swift */; };
 		2BE223D59BC6BBF99986DD42 /* S2_CloudKitProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD3130A571AEE34E51DB5A6 /* S2_CloudKitProbe.swift */; };
+		2CD20722A51E310321B4E383 /* DraftMaintenanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49CCCE31C265A63CD4B7015C /* DraftMaintenanceTests.swift */; };
 		3023BF1F2CD6962E260C49BB /* SoozipGeometry in Frameworks */ = {isa = PBXBuildFile; productRef = 9ADE057923A235FCC00FAFBA /* SoozipGeometry */; };
 		388CA7124B54E88DCCBF504B /* RepositoryError.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */; };
 		3DB80CC860CFBE5F5B0CCF95 /* NanumPenScript-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */; };
@@ -36,7 +37,9 @@
 		B9EA7CC2CE9D307F4ABB5EBC /* Canvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047F9BFBF22054689F3E8B91 /* Canvas.swift */; };
 		CD538C471428789FA3051298 /* SoozipSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71E10DC58F23F315C120F6D /* SoozipSchema.swift */; };
 		D236C3D739671345185DB682 /* LibraryRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2147BF9C48A509FBFA2A889A /* LibraryRepositoryTests.swift */; };
+		DA4FD76BD30328CAC53E8821 /* SoozipDraft in Frameworks */ = {isa = PBXBuildFile; productRef = 9E776C5F28A08B588EA95202 /* SoozipDraft */; };
 		E7D7E7098AF8FF5AA5E1C603 /* GowunDodum-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */; };
+		ED6E83C07862839EB7E7F136 /* DraftMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B6C0418C3376C1F9CA657F /* DraftMaintenance.swift */; };
 		FF2AF15908FD92988858E085 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */; };
 /* End PBXBuildFile section */
 
@@ -62,6 +65,7 @@
 		36C03932BBBB53963B7A0028 /* Collection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Collection.swift; sourceTree = "<group>"; };
 		386878385B375CB1CCBF7535 /* SoozipGeometry */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipGeometry; path = Packages/SoozipGeometry; sourceTree = SOURCE_ROOT; };
 		3DBC1AB245A7E6673CBEBF32 /* NanumPenScript-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "NanumPenScript-Regular.ttf"; sourceTree = "<group>"; };
+		49CCCE31C265A63CD4B7015C /* DraftMaintenanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftMaintenanceTests.swift; sourceTree = "<group>"; };
 		53EC7B8C28A7E548812BE0CA /* SoozipLayout */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SoozipLayout; path = Packages/SoozipLayout; sourceTree = SOURCE_ROOT; };
 		54F96E68BFCD85561EB18869 /* SoozipApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoozipApp.swift; sourceTree = "<group>"; };
 		5D5F8CD5A3D17A78B45FD4D9 /* SyncStatusResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncStatusResolverTests.swift; sourceTree = "<group>"; };
@@ -83,6 +87,7 @@
 		E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryError.swift; sourceTree = "<group>"; };
 		E71E10DC58F23F315C120F6D /* SoozipSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoozipSchema.swift; sourceTree = "<group>"; };
 		E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
+		F6B6C0418C3376C1F9CA657F /* DraftMaintenance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DraftMaintenance.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -92,6 +97,7 @@
 			files = (
 				4AEDF7F8D29E708C2B2F9E16 /* SoozipGeometry in Frameworks */,
 				421A5F35071F3F04EE4D4077 /* SoozipLayout in Frameworks */,
+				DA4FD76BD30328CAC53E8821 /* SoozipDraft in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -153,6 +159,7 @@
 			isa = PBXGroup;
 			children = (
 				8FA940B09932DE75C53756C1 /* CoverPolicy.swift */,
+				F6B6C0418C3376C1F9CA657F /* DraftMaintenance.swift */,
 				84CB70DCB539154DF5C2F957 /* LibraryRepository.swift */,
 				E0AC1DFD956FF91E027E82E1 /* RepositoryError.swift */,
 				A347D8A078D0DD8A659DC4FC /* StatsRepository.swift */,
@@ -174,6 +181,7 @@
 			children = (
 				27A62890829577BC2C0158FD /* CGInteropTests.swift */,
 				D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */,
+				49CCCE31C265A63CD4B7015C /* DraftMaintenanceTests.swift */,
 				27D9D944017B664FC0A6D715 /* FontLoadingTests.swift */,
 				2147BF9C48A509FBFA2A889A /* LibraryRepositoryTests.swift */,
 				8851A91A6001CBA0F853B4F9 /* ModelSchemaTests.swift */,
@@ -269,6 +277,7 @@
 			packageProductDependencies = (
 				DF7F10063207E3BEA0036CB2 /* SoozipGeometry */,
 				EFB31317B40EE5456E1A0D35 /* SoozipLayout */,
+				9E776C5F28A08B588EA95202 /* SoozipDraft */,
 			);
 			productName = SoozipTests;
 			productReference = 1D1524DCC8B0813DCD775094 /* SoozipTests.xctest */;
@@ -357,6 +366,7 @@
 			files = (
 				19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */,
 				52F377FFD2CDA8C6E5697AEF /* CoverPolicyTests.swift in Sources */,
+				2CD20722A51E310321B4E383 /* DraftMaintenanceTests.swift in Sources */,
 				B6AB98D78AEE6927DBE5953A /* FontLoadingTests.swift in Sources */,
 				D236C3D739671345185DB682 /* LibraryRepositoryTests.swift in Sources */,
 				5B99F0068346BD5AECD50B17 /* ModelSchemaTests.swift in Sources */,
@@ -375,6 +385,7 @@
 				002C07C6C4214C43880C2081 /* CanvasPhoto.swift in Sources */,
 				4DFCD319F4CD4D3F02320890 /* Collection.swift in Sources */,
 				1C2EBD327D3077BC5540C895 /* CoverPolicy.swift in Sources */,
+				ED6E83C07862839EB7E7F136 /* DraftMaintenance.swift in Sources */,
 				8C49DE292AE46C7A7F9D505C /* LibraryRepository.swift in Sources */,
 				388CA7124B54E88DCCBF504B /* RepositoryError.swift in Sources */,
 				8764051F73D24C8DED0E9E42 /* S1_GestureProbe.swift in Sources */,
@@ -649,6 +660,10 @@
 			productName = SoozipGeometry;
 		};
 		9E2A61E37526400C5A6442CA /* SoozipDraft */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SoozipDraft;
+		};
+		9E776C5F28A08B588EA95202 /* SoozipDraft */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SoozipDraft;
 		};
