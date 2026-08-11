@@ -43,7 +43,7 @@ steps:
     - "RGR T4 하네스+모음집CRUD": { red: completed, green: completed, refactor: skipped, test-count: 146 }
     - "RGR T5 캔버스 생성·갱신": { red: completed, green: completed, refactor: completed, test-count: 159 }
     - "RGR T6 삭제+cascade": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 167 }
-    - "RGR T7 이동+조회": pending
+    - "RGR T7 이동+조회": { red: completed, green: completed, refactor: completed, test-count: 178 }
     - "RGR T8 StatsRepository": pending
     - "RGR T9 앱 배선": pending
     - 변경사항 수집: pending
@@ -146,17 +146,23 @@ execution-log:
     result: "T5 REFACTOR — 한계초과 제목 픽스처와 기대 에러를 한 쌍으로 묶음(길이가 어긋나면 통과해도 검증한 것이 없다). 프로덕션 정리 대상 없음"
   - phase: implement
     result: "T6 완료 — deleteCanvas/deleteCollection. 8개 추가로 167개 통과(앱 77), 회귀 0건. cascade는 deleteRule 단독으로 전이까지 발화 확인(리포지토리 우회 경로 테스트 포함)"
+  - phase: implement
+    result: "T7 완료 — moveCanvas + canvases(in:order:) + coverCanvas. 11개 추가로 178개 통과(앱 88), 회귀 0건. LibraryRepository 전 메서드 완비"
+  - phase: implement
+    decision: "canvases(in:order:) 정렬 2차 키를 id.uuidString으로 — AC에 없지만 CoverPolicy와 같은 근거(to-many 순서 무보장). 기록 날짜 동률 시 목록이 실행마다 뒤집히는 것을 막는다"
+  - phase: implement
+    result: "T7 REFACTOR — applyThenReconcileCover를 가변 인자로 통합(moveCanvas 양쪽 재계산). 순서 고정이 한 곳에만 있어 호출부가 틀릴 수 없다. 테스트 픽스처 2건 추출(유령표지_상태 / 날짜가_뒤섞인_캔버스3장)"
 next-task:
-  id: T7
+  id: T8
   step: RED
-  scope: "moveCanvas 양쪽 재계산 + coverCanvas/canvases(in:order:)"
-  ac: "AC-11, AC-12(개정), AC-13 / AC-18, FR-6"
-  spec: ".dev/feat-data-layer/design.md §7 동작 상세 — moveCanvas는 소속 변경의 단일 경로, coverCanvas(of:)는 읽기 전용"
+  scope: "StatsRepository 통계 5종 (streakDays(now:) 포함)"
+  ac: "AC-19 ~ AC-25, AC-25a, AC-25b"
+  spec: ".dev/feat-data-layer/design.md §9 (StatsRepository)"
   files:
-    - "SoozipTests/LibraryRepositoryTests.swift (기존 파일에 추가)"
-    - "Soozip/Data/Repository/LibraryRepository.swift (기존 파일에 추가)"
-  notes: "AC-12 전제는 개정본을 따른다 — A에 표지 C4 + 비표지 C3. coverCanvas(of:)는 DB를 건드리지 않아야 한다(AC-18 전제). 유령 표지를 일부러 만드는 AC-18 테스트만 withLibrary(checksCoverInvariant: false)"
-  remaining: "T7 이동+조회 / T8 StatsRepository / T9 앱 배선"
+    - "SoozipTests/StatsRepositoryTests.swift (신규)"
+    - "Soozip/Data/Repository/StatsRepository.swift (신규)"
+  notes: "신규 파일 2개 — 반드시 `xcodegen generate` 후 테스트. 시각은 파라미터로 받는다(streakDays(now:)는 BR-9 개정 결과). 동률은 createdAt 오름차순"
+  remaining: "T8 StatsRepository / T9 앱 배선"
   after-implement: "phase-review (spec-reviewer → quality-reviewer + security-auditor) → phase-complete (verify 게이트 → 인수 → PR)"
   method: "사용자 요청으로 T3부터 에이전트 디스패치 없이 오케스트레이터가 직접 RGR 수행 중. Iron Law(실패 테스트 우선)는 유지"
   verify-command: "./scripts/test.sh  # 현재 146개 통과 (패키지 90 + 앱 56)"

@@ -14,6 +14,10 @@ struct CanvasInput: Equatable, Sendable {
     var renderedPNG: Data? = nil
 }
 
+/// 캔버스 목록 정렬 기준 (FR-6). 키는 기록 날짜(`createdAt`)이지 저장 시각이 아니다 —
+/// 사용자가 정한 날짜가 목록 순서를 정한다.
+enum CanvasOrder: Sendable { case newestFirst, oldestFirst }
+
 /// 모음집과 캔버스의 영속성 계층.
 ///
 /// 둘을 **한 애그리게이트로 묶은 이유**: 표지 정합성이 두 모델에 걸친 불변식이라,
@@ -138,6 +142,45 @@ struct LibraryRepository {
         try applyThenReconcileCover(of: owner)
     }
 
+    /// 캔버스를 다른 모음집으로 옮긴다. **소속 변경의 단일 경로다** —
+    /// `createCanvas`는 소속을 받되 바꾸지 않고, `updateCanvas`는 아예 받지 않는다.
+    ///
+    /// 원본과 목적지 **양쪽**을 재계산한다(AC-11·12·13). 한쪽만 하면 초안 설계가
+    /// 냈던 "표지=C1인데 소속 캔버스 0장"이 그대로 재현된다.
+    func moveCanvas(_ canvas: Canvas, to destination: Collection) throws {
+        let origin = canvas.collection
+        // 같은 모음집이면 즉시 빠진다. 그냥 진행해도 결과는 같지만 Collection
+        // 레코드를 헛되이 더티로 만들 이유가 없다.
+        guard origin?.id != destination.id else { return }
+
+        canvas.collection = destination
+        try applyThenReconcileCover(of: origin, destination)
+    }
+
+    // MARK: - 조회
+
+    /// 모음집의 캔버스 목록. **읽기 전용이다.**
+    func canvases(in collection: Collection, order: CanvasOrder = .newestFirst) -> [Canvas] {
+        // 2차 키가 `id`인 이유는 `CoverPolicy.resolve`와 같다 — 기록 날짜가 같은
+        // 캔버스가 둘이면 순서가 배열 순서에 의존하는데 SwiftData의 to-many 순서는
+        // 보장되지 않아 같은 데이터에서 목록이 실행마다 뒤집힌다.
+        let oldestFirst = canvasesFetched(in: collection).sorted {
+            ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString)
+        }
+        switch order {
+        case .oldestFirst: return oldestFirst
+        case .newestFirst: return oldestFirst.reversed()
+        }
+    }
+
+    /// 표지 캔버스. **읽기 전용이다** — 저장된 식별자가 유령이어도 고쳐 쓰지 않고
+    /// 폴백 결과만 돌려준다(AC-18, FR-11). 조회가 슬쩍 쓰면 `@Query`가 도는
+    /// 화면에서 스크롤만 해도 쓰기가 발생한다.
+    func coverCanvas(of collection: Collection) -> Canvas? {
+        CoverPolicy.resolve(in: canvasesFetched(in: collection),
+                            coverID: collection.coverCanvasID)
+    }
+
     // MARK: - 내부
 
     /// 제목 길이 검증(AC-30, BR-7). 하한이 0이라 빈 제목은 통과한다 —
@@ -154,10 +197,16 @@ struct LibraryRepository {
     /// 두 번 저장하는 것이 낭비로 보이지만, 표지 재계산의 후보 목록은 `fetch`로
     /// 얻는데 그 결과가 첫 `save()` 전까지 방금의 변경을 반영하지 않는다(실측).
     /// "save 두 번을 하나로 합치자"는 평범한 리팩터가 곧 유령 표지를 만든다.
-    private func applyThenReconcileCover(of collection: Collection?) throws {
+    ///
+    /// 여러 모음집을 받는 이유는 `moveCanvas`가 원본·목적지 양쪽을 재계산해야
+    /// 하기 때문이다. **순서 고정을 이 한 곳에만 두면 호출부가 그것을 틀릴 수 없다.**
+    private func applyThenReconcileCover(of collections: Collection?...) throws {
         try context.save()
-        guard let collection else { return }
-        reconcileCover(of: collection)
+
+        var done: Set<UUID> = []
+        for collection in collections.compactMap({ $0 }) where done.insert(collection.id).inserted {
+            reconcileCover(of: collection)
+        }
         try context.save()
     }
 

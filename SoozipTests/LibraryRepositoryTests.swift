@@ -509,3 +509,192 @@ private func attachPhotos(_ count: Int, to canvas: Canvas, in context: ModelCont
         #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 0)
     }
 }
+
+// MARK: - AC-11·12·13: 이동은 양쪽 모음집의 표지를 다시 계산한다
+
+@Test @MainActor func 표지_캔버스를_빈_모음집으로_옮기면_양쪽_표지가_모두_갱신된다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let b = try repo.createCollection(name: "나", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: try day(5, from: anchor)),
+                                       in: a, now: anchor)
+        let c2 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        #expect(a.coverCanvasID == c1.id.uuidString)
+
+        try repo.moveCanvas(c1, to: b)
+
+        #expect(a.coverCanvasID == c2.id.uuidString)   // 남은 것으로 승계
+        #expect(b.coverCanvasID == c1.id.uuidString)   // 첫 캔버스라 표지가 된다
+    }
+}
+
+@Test @MainActor func 비표지_캔버스를_표지가_있는_모음집으로_옮기면_양쪽_다_그대로다() throws {
+    // C3을 **모든 캔버스 중 가장 최근**으로 둔다 — 그래야 B에서 유지 규칙(AC-7)이
+    // 최신 우선(BR-6)을 이기는지가 실제로 측정된다.
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let b = try repo.createCollection(name: "나", now: anchor)
+        let c4 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let c3 = try repo.createCanvas(canvasInput(createdAt: try day(9, from: anchor)),
+                                       in: a, now: anchor)
+        let c9 = try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)),
+                                       in: b, now: anchor)
+
+        try repo.moveCanvas(c3, to: b)
+
+        #expect(a.coverCanvasID == c4.id.uuidString)
+        #expect(b.coverCanvasID == c9.id.uuidString)
+    }
+}
+
+@Test @MainActor func 마지막_캔버스를_옮기면_원본_모음집은_표지가_비고_캔버스도_0장이_된다() throws {
+    // 초안 설계의 업서트가 정확히 여기서 "표지=C1인데 소속 캔버스 0장"을 만들었다.
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let b = try repo.createCollection(name: "나", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+
+        try repo.moveCanvas(c1, to: b)
+
+        #expect(a.coverCanvasID.isEmpty)
+        #expect(repo.canvases(in: a).isEmpty)
+        #expect(b.coverCanvasID == c1.id.uuidString)
+    }
+}
+
+@Test @MainActor func 같은_모음집으로_옮기면_아무것도_바뀌지_않는다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let c2 = try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)),
+                                       in: a, now: anchor)
+
+        try repo.moveCanvas(c1, to: a)
+
+        #expect(a.coverCanvasID == c1.id.uuidString)
+        #expect(repo.canvases(in: a).count == 2)
+        #expect(c2.collection?.id == a.id)
+    }
+}
+
+// MARK: - AC-18: 유령 표지는 조회 시점에 폴백된다 (FR-11)
+
+/// 다른 기기가 표지 캔버스를 지운 상태를 만든다.
+///
+/// **리포지토리를 우회해서 지운다** — `repo.deleteCanvas`는 재계산을 돌려
+/// 유령이 애초에 생기지 않는다. 캔버스를 셋 두는 이유는 폴백이 "남은 아무것"이
+/// 아니라 "남은 것 중 최신"임을 재기 위해서다.
+@MainActor
+private func 유령표지_상태(_ repo: LibraryRepository, _ context: ModelContext)
+    throws -> (모음집: Collection, 유령ID: String, 남은것중_최신: Canvas) {
+    let anchor = try testAnchor()
+    let a = try repo.createCollection(name: "여행", now: anchor)
+    let 유령 = try repo.createCanvas(canvasInput(createdAt: try day(9, from: anchor)),
+                                    in: a, now: anchor)
+    try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+    let 최신 = try repo.createCanvas(canvasInput(createdAt: try day(5, from: anchor)),
+                                    in: a, now: anchor)
+
+    let 유령ID = 유령.id.uuidString   // 지우기 전에 잡는다
+    context.delete(유령)
+    try context.save()
+    return (a, 유령ID, 최신)
+}
+
+@Test @MainActor func 존재하지_않는_캔버스를_가리키는_표지는_남은_것_중_최신으로_폴백된다() throws {
+    // 다른 기기가 표지 캔버스를 지운 상황이다. 불변식 검사를 끄는 **유일한**
+    // 테스트 — 유령 표지 상태를 일부러 만들기 때문이다.
+    try withLibrary(checksCoverInvariant: false) { repo, context in
+        let (a, 유령ID, 남은것중_최신) = try 유령표지_상태(repo, context)
+        #expect(a.coverCanvasID == 유령ID)
+
+        #expect(repo.coverCanvas(of: a)?.id == 남은것중_최신.id)
+    }
+}
+
+@Test @MainActor func 표지_조회는_저장된_식별자를_고쳐_쓰지_않는다() throws {
+    // AC-18은 조회가 DB를 건드리지 않을 것을 전제한다. 조회가 슬쩍 고치면
+    // `@Query`가 도는 화면에서 스크롤만 해도 쓰기가 발생한다.
+    try withLibrary(checksCoverInvariant: false) { repo, context in
+        let (a, 유령ID, _) = try 유령표지_상태(repo, context)
+
+        _ = repo.coverCanvas(of: a)
+
+        #expect(a.coverCanvasID == 유령ID)   // 그대로다
+    }
+}
+
+@Test @MainActor func 캔버스가_없는_모음집의_표지_조회는_nil이다() throws {
+    try withLibrary { repo, _ in
+        let a = try repo.createCollection(name: "빈", now: try testAnchor())
+        #expect(repo.coverCanvas(of: a) == nil)
+    }
+}
+
+// MARK: - FR-6: 캔버스 목록 정렬
+
+/// 기록 날짜가 **생성 순서와 뒤섞인** 캔버스 3장. 생성 순서대로 나오는 구현이
+/// 정렬 테스트를 통과해 버리지 않도록 일부러 어긋나게 넣는다.
+@MainActor
+private func 날짜가_뒤섞인_캔버스3장(_ repo: LibraryRepository, in a: Collection) throws {
+    let anchor = try testAnchor()
+    try repo.createCanvas(canvasInput(title: "가운데", createdAt: try day(1, from: anchor)),
+                          in: a, now: anchor)
+    try repo.createCanvas(canvasInput(title: "최신", createdAt: try day(9, from: anchor)),
+                          in: a, now: anchor)
+    try repo.createCanvas(canvasInput(title: "최고참", createdAt: anchor), in: a, now: anchor)
+}
+
+@Test @MainActor func 캔버스_목록은_기본이_최신순이다() throws {
+    try withLibrary { repo, _ in
+        let a = try repo.createCollection(name: "여행", now: try testAnchor())
+        try 날짜가_뒤섞인_캔버스3장(repo, in: a)
+
+        #expect(repo.canvases(in: a).map(\.title) == ["최신", "가운데", "최고참"])
+    }
+}
+
+@Test @MainActor func 오래된순을_지정하면_역순으로_나온다() throws {
+    try withLibrary { repo, _ in
+        let a = try repo.createCollection(name: "여행", now: try testAnchor())
+        try 날짜가_뒤섞인_캔버스3장(repo, in: a)
+
+        #expect(repo.canvases(in: a, order: .oldestFirst).map(\.title)
+                == ["최고참", "가운데", "최신"])
+    }
+}
+
+@Test @MainActor func 기록_날짜가_같아도_목록_순서가_실행마다_바뀌지_않는다() throws {
+    // SwiftData의 to-many 순서는 보장되지 않는다. 2차 키가 없으면 같은 데이터에서
+    // 목록이 실행마다 뒤집혀 Phase 6의 행이 튄다 — CoverPolicy가 같은 이유로
+    // id를 2차 키로 쓴다.
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        for _ in 0..<5 {
+            try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        }
+
+        let 첫조회 = repo.canvases(in: a).map(\.id)
+        #expect(repo.canvases(in: a).map(\.id) == 첫조회)
+        #expect(repo.canvases(in: a, order: .oldestFirst).map(\.id) == 첫조회.reversed())
+    }
+}
+
+@Test @MainActor func 캔버스_목록에_다른_모음집의_캔버스는_섞이지_않는다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let b = try repo.createCollection(name: "나", now: anchor)
+        try repo.createCanvas(canvasInput(title: "A것", createdAt: anchor), in: a, now: anchor)
+        try repo.createCanvas(canvasInput(title: "B것", createdAt: try day(1, from: anchor)),
+                              in: b, now: anchor)
+
+        #expect(repo.canvases(in: a).map(\.title) == ["A것"])
+        #expect(repo.canvases(in: b).map(\.title) == ["B것"])
+    }
+}
