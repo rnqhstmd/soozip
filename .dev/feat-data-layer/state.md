@@ -1,4 +1,4 @@
-phase: implement
+phase: review
 status: in_progress
 pipeline: gx-tdd
 verify-status: pending
@@ -18,13 +18,13 @@ last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
 auto-stashed: false
 config-setup-attempts: 1
 warnings-baseline: 0
-current-step: "RGR T5: RED"
+current-step: "phase-review 진입 대기"
 phases:
   setup: completed
   requirements: completed
   design: completed
-  implement: in_progress
-  review: pending
+  implement: completed
+  review: in_progress
   complete: pending
 steps:
   requirements:
@@ -45,8 +45,8 @@ steps:
     - "RGR T6 삭제+cascade": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 167 }
     - "RGR T7 이동+조회": { red: completed, green: completed, refactor: completed, test-count: 178 }
     - "RGR T8 StatsRepository": { red: completed, green: completed, refactor: completed, test-count: 194 }
-    - "RGR T9 앱 배선": pending
-    - 변경사항 수집: pending
+    - "RGR T9 앱 배선": completed (test-count: 195)
+    - 변경사항 수집: completed
   review:
     - mechanical-gate: pending
     - spec-review (1단계): pending
@@ -160,18 +160,17 @@ execution-log:
     result: "T8 하네스 함정 기록 — #expect(try ...)만 있고 문 수준 try가 없으면 클로저가 비throwing으로 추론된다(매크로 확장이 타입 추론보다 나중). try를 문 수준으로 올려 해결"
   - phase: implement
     decision: "largestCollection에서 모음집이 전부 비었을 때 = 0장끼리 동률로 보고 BR-8 적용(먼저 만든 쪽 반환). nil은 '모음집이 하나도 없다'는 뜻으로만 남긴다. PRD 무규정 자리라 테스트로 고정"
+  - phase: implement
+    result: "T9 완료 — 앱 컨테이너를 SoozipSchema.models로 교체, 프로브 전용 컨테이너를 S2 뷰 내부로 분리. 스키마 SSOT 테스트 1개 추가로 195개 통과(앱 105). 빌드 성공, 소스 경고 0건"
+  - phase: implement
+    result: "phase-implement 종료 — RGR 9사이클 전부 완료. AC 32건 대응 구현 + 테스트 195개(패키지 90 + 앱 105). 신규 6파일·수정 3파일"
 next-task:
-  id: T9
-  step: 구현
-  scope: "앱 배선 — SoozipApp의 modelContainer를 SoozipSchema.models로, S2 프로브 전용 컨테이너를 뷰 내부로 분리"
-  ac: "회귀 방지 (신규 AC 없음)"
-  spec: ".dev/feat-data-layer/design.md 수정 파일 표 — SoozipApp.swift, S2_CloudKitProbe.swift"
-  files:
-    - "Soozip/App/SoozipApp.swift"
-    - "Soozip/Spikes/S2_CloudKitProbe.swift"
-  notes: "RGR이 아닌 배선 작업. ProbeCollection/ProbeCanvas가 앱 컨테이너에서 빠지는지 확인. 끝나면 phase-implement 종료 → 변경사항 수집 → phase-review 진입"
-  remaining: "T9 앱 배선"
-  after-implement: "phase-review (spec-reviewer → quality-reviewer + security-auditor) → phase-complete (verify 게이트 → 인수 → PR)"
-  method: "사용자 요청으로 T3부터 에이전트 디스패치 없이 오케스트레이터가 직접 RGR 수행 중. Iron Law(실패 테스트 우선)는 유지"
-  verify-command: "./scripts/test.sh  # 현재 146개 통과 (패키지 90 + 앱 56)"
+  id: phase-review
+  step: mechanical-gate
+  scope: "기계 게이트(빌드·테스트·경고) → spec-review(AC 충족) → quality-review + security(병렬)"
+  spec: "Iron Law — spec-review 통과 전에는 quality-review를 돌리지 않는다"
+  baseline: "빌드 성공 / 테스트 195개 통과 / 소스 경고 0건 (기준선 0 유지)"
+  notes: "사용자가 T3부터 에이전트 디스패치를 거부했다. 리뷰 단계 진행 방식(직접 수행 vs 에이전트 디스패치)을 사용자에게 확인할 것"
+  after-review: "phase-complete (verify 게이트 → 인수검증 → PR)"
+  verify-command: "./scripts/test.sh  # 현재 195개 통과 (패키지 90 + 앱 105)"
   xcodegen: "파일을 추가하면 반드시 `xcodegen generate` — project.yml이 원본이라 재생성 없이는 xcodebuild가 새 파일을 못 본다"
