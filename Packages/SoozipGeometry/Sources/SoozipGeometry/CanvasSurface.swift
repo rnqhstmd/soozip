@@ -45,8 +45,19 @@ public struct CanvasSurface: Equatable, Sendable {
     /// **식 하나가 세로·가로를 다 설명한다.** v4 §1.2 표의 "세로는 폭에 맞춰,
     /// 가로는 높이에 맞춰"는 두 규칙이 아니라 이 `min`의 결과다. 방향으로
     /// 분기하면 정사각형에 가까운 뷰포트에서 어긋난다.
+    /// **뷰포트나 캔버스가 유효하지 않으면 0을 낸다.**
+    ///
+    /// SwiftUI `GeometryReader`는 **첫 레이아웃 패스에서 `.zero`를 준다** — 실제로
+    /// 지나가는 경로다. 나누기를 그대로 두면 `scale`이 0이 되고 `toLogical`이
+    /// `inf`/`NaN`을 뱉는데, **`NaN`은 클램프를 그냥 통과한다**(Swift `min`/`max`는
+    /// `y >= x ? y : x` 형태라 `NaN` 비교가 전부 거짓이다). 그러면 `center`가
+    /// `NaN`으로 굳어 정상 뷰포트가 와도 복구되지 않는다.
     public var fitScale: Double {
-        min(viewport.width / canvas.width, viewport.height / canvas.height)
+        guard canvas.width > 0, canvas.height > 0,
+              viewport.width > 0, viewport.height > 0,
+              canvas.width.isFinite, canvas.height.isFinite,
+              viewport.width.isFinite, viewport.height.isFinite else { return 0 }
+        return min(viewport.width / canvas.width, viewport.height / canvas.height)
     }
 
     /// 논리 1단위가 화면 몇 pt인가.
@@ -54,6 +65,26 @@ public struct CanvasSurface: Equatable, Sendable {
 
     public var canvasCenter: Vec2 {
         Vec2(x: canvas.width / 2, y: canvas.height / 2)
+    }
+
+    /// 팬이 갈 수 있는 한계이자 **레이어 중심이 나갈 수 없는 한계**(v4 §5.10).
+    /// 캔버스의 2배 범위다.
+    ///
+    /// `EDITOR-9`(레이어 경계)가 이 사각형을 다시 정의하지 않도록 공개한다.
+    /// 두 벌로 갈라지면 한쪽만 바뀌었을 때 "팬으로 못 닿는 곳에 레이어가 놓이거나,
+    /// 레이어가 못 가는 곳까지 팬되는" 어긋남이 조용히 생긴다.
+    public var workArea: (min: Vec2, max: Vec2) {
+        let c = canvasCenter
+        return (Vec2(x: c.x - canvas.width, y: c.y - canvas.height),
+                Vec2(x: c.x + canvas.width, y: c.y + canvas.height))
+    }
+
+    /// 작업 영역 안으로 자른다. **기준은 언제나 캔버스 중심이다** — 현재 `center`를
+    /// 기준으로 삼으면 팬할 때마다 기준이 따라가 무한히 벗어난다.
+    public func clampedToWorkArea(_ p: Vec2) -> Vec2 {
+        let area = workArea
+        return Vec2(x: min(max(p.x, area.min.x), area.max.x),
+                    y: min(max(p.y, area.min.y), area.max.y))
     }
 
     // MARK: - 변환
@@ -64,8 +95,12 @@ public struct CanvasSurface: Equatable, Sendable {
     }
 
     public func toLogical(_ p: Vec2) -> Vec2 {
-        Vec2(x: (p.x - viewport.width / 2) / scale + center.x,
-             y: (p.y - viewport.height / 2) / scale + center.y)
+        // 배율이 0이면 화면의 어느 점도 논리 지점으로 되돌릴 수 없다.
+        // `NaN`을 흘리는 대신 **유일하게 방어 가능한 답인 `center`** 를 낸다.
+        let s = scale
+        guard s > 0 else { return center }
+        return Vec2(x: (p.x - viewport.width / 2) / s + center.x,
+                    y: (p.y - viewport.height / 2) / s + center.y)
     }
 
     // MARK: - 변경
@@ -75,6 +110,8 @@ public struct CanvasSurface: Equatable, Sendable {
     /// `center`를 건드리지 않으므로 **확대해도 보던 지점이 안 밀린다.**
     /// (핀치 중심을 기준으로 확대하는 것은 제스처 배선의 몫이다 — `EDITOR-10`.)
     public func zoomed(to value: Double) -> CanvasSurface {
+        // `NaN`은 클램프를 통과한다 — 막지 않으면 `scale`이 통째로 죽는다.
+        guard value.isFinite else { return self }
         var copy = self
         copy.zoom = min(max(value, Self.zoomLimits.min), Self.zoomLimits.max)
         return copy
@@ -82,9 +119,19 @@ public struct CanvasSurface: Equatable, Sendable {
 
     /// 화면 중앙에 올 논리 지점을 지정한다(팬). 작업 영역 밖은 경계로 자른다.
     public func centered(on point: Vec2) -> CanvasSurface {
+        guard point.x.isFinite, point.y.isFinite else { return self }
         var copy = self
         copy.center = clampedToWorkArea(point)
         return copy
+    }
+
+    /// fit으로 되돌린다(더블탭).
+    ///
+    /// **`zoom = 1`만으로는 부족하다.** 배율만 되돌리고 `center`를 두면, 작업 영역
+    /// 끝까지 팬해 둔 상태에서 캔버스가 화면 밖에 그대로 남는다 — 사용자는
+    /// "맞춤으로 복귀"를 눌렀는데 빈 화면을 본다.
+    public func fitted() -> CanvasSurface {
+        CanvasSurface(canvas: canvas, viewport: viewport)
     }
 
     /// 뷰포트가 바뀐다(기기 회전).
@@ -100,13 +147,4 @@ public struct CanvasSurface: Equatable, Sendable {
         return copy
     }
 
-    // MARK: - 내부
-
-    /// 작업 영역은 **캔버스의 2배 범위**다(v4 §5.10). 중심에서 캔버스 크기만큼이
-    /// 반경이 된다. 그 밖은 줌 아웃으로도 볼 수 없어 레이어를 영영 잡을 수 없다.
-    private func clampedToWorkArea(_ p: Vec2) -> Vec2 {
-        let c = canvasCenter
-        return Vec2(x: min(max(p.x, c.x - canvas.width), c.x + canvas.width),
-                    y: min(max(p.y, c.y - canvas.height), c.y + canvas.height))
-    }
 }
