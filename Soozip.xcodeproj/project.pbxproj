@@ -40,6 +40,7 @@
 		9A039DCBD90071D6005AE9AC /* DeletionAndHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7841B451052EA4056DFB15D9 /* DeletionAndHintTests.swift */; };
 		9A3566FED79A6D756EB754F2 /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = E7A9BA9442A56CBBB6BA91D6 /* Pretendard-Regular.otf */; };
 		9B1AFB07A695FCD5C53AED38 /* SoozipLayout in Frameworks */ = {isa = PBXBuildFile; productRef = 31C34752FA1E90A63189F07A /* SoozipLayout */; };
+		9E03E402D8DF08F4E4B8EF2A /* CanvasPromoter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851B31523BEBD6F89BAF11B5 /* CanvasPromoter.swift */; };
 		A42B53911CBD3B03094A2E43 /* CollectionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 909534BB2EE4AD00C96B2C94 /* CollectionCardView.swift */; };
 		A6E1BDD807A255894F5056C1 /* CollectionEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BBC8F37B56C56E300441201 /* CollectionEditSheet.swift */; };
 		B5E098B1ECE3D6811BCE29C5 /* SyncStatusResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5F8CD5A3D17A78B45FD4D9 /* SyncStatusResolverTests.swift */; };
@@ -51,6 +52,7 @@
 		DAF2DACAFA8C39B0592A9CD4 /* CollectionPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2DE9F743070C618C34A7AD /* CollectionPresenter.swift */; };
 		E7D7E7098AF8FF5AA5E1C603 /* GowunDodum-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */; };
 		ED6E83C07862839EB7E7F136 /* DraftMaintenance.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B6C0418C3376C1F9CA657F /* DraftMaintenance.swift */; };
+		FEFEB07E1F66D6110F56C617 /* CanvasPromotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB6BE3B30F94BDECB43C32FF /* CanvasPromotionTests.swift */; };
 		FF2AF15908FD92988858E085 /* PlayfairDisplay-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */; };
 /* End PBXBuildFile section */
 
@@ -89,6 +91,7 @@
 		70006E3DA1CD22EC7BC7AEE4 /* CanvasPhoto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasPhoto.swift; sourceTree = "<group>"; };
 		7841B451052EA4056DFB15D9 /* DeletionAndHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeletionAndHintTests.swift; sourceTree = "<group>"; };
 		84CB70DCB539154DF5C2F957 /* LibraryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRepository.swift; sourceTree = "<group>"; };
+		851B31523BEBD6F89BAF11B5 /* CanvasPromoter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasPromoter.swift; sourceTree = "<group>"; };
 		8773AA3035F91DEF4D74EF22 /* GowunDodum-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GowunDodum-Regular.ttf"; sourceTree = "<group>"; };
 		8851A91A6001CBA0F853B4F9 /* ModelSchemaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelSchemaTests.swift; sourceTree = "<group>"; };
 		88733267BA00CE2B5FB05BFD /* StatsRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsRepositoryTests.swift; sourceTree = "<group>"; };
@@ -102,6 +105,7 @@
 		AB8A361640894F689934E3BB /* CollectionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionDetailView.swift; sourceTree = "<group>"; };
 		B57174CFAFEBE1B0850721C0 /* CollectionPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionPresenterTests.swift; sourceTree = "<group>"; };
 		B65C00043DE037ADF87DF506 /* PlayfairDisplay-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PlayfairDisplay-Regular.ttf"; sourceTree = "<group>"; };
+		CB6BE3B30F94BDECB43C32FF /* CanvasPromotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanvasPromotionTests.swift; sourceTree = "<group>"; };
 		CD2DE9F743070C618C34A7AD /* CollectionPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectionPresenter.swift; sourceTree = "<group>"; };
 		D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverPolicyTests.swift; sourceTree = "<group>"; };
 		D5656ED6249C22E3C91E7E6A /* CGInterop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CGInterop.swift; sourceTree = "<group>"; };
@@ -180,6 +184,7 @@
 		64AD3F68E0EC50522CF7CF4C /* Repository */ = {
 			isa = PBXGroup;
 			children = (
+				851B31523BEBD6F89BAF11B5 /* CanvasPromoter.swift */,
 				8FA940B09932DE75C53756C1 /* CoverPolicy.swift */,
 				F6B6C0418C3376C1F9CA657F /* DraftMaintenance.swift */,
 				84CB70DCB539154DF5C2F957 /* LibraryRepository.swift */,
@@ -201,6 +206,7 @@
 		71A61DA7A821B0AA9DEFBCAB /* SoozipTests */ = {
 			isa = PBXGroup;
 			children = (
+				CB6BE3B30F94BDECB43C32FF /* CanvasPromotionTests.swift */,
 				27A62890829577BC2C0158FD /* CGInteropTests.swift */,
 				B57174CFAFEBE1B0850721C0 /* CollectionPresenterTests.swift */,
 				D41FD40A4FC0220746E04881 /* CoverPolicyTests.swift */,
@@ -414,6 +420,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				19AE7A1FA38125C9B6453311 /* CGInteropTests.swift in Sources */,
+				FEFEB07E1F66D6110F56C617 /* CanvasPromotionTests.swift in Sources */,
 				8C642B9E707523433ED777C3 /* CollectionPresenterTests.swift in Sources */,
 				52F377FFD2CDA8C6E5697AEF /* CoverPolicyTests.swift in Sources */,
 				9A039DCBD90071D6005AE9AC /* DeletionAndHintTests.swift in Sources */,
@@ -434,6 +441,7 @@
 				78D6BD945CF9D42F01398CE6 /* CGInterop.swift in Sources */,
 				B9EA7CC2CE9D307F4ABB5EBC /* Canvas.swift in Sources */,
 				002C07C6C4214C43880C2081 /* CanvasPhoto.swift in Sources */,
+				9E03E402D8DF08F4E4B8EF2A /* CanvasPromoter.swift in Sources */,
 				4DFCD319F4CD4D3F02320890 /* Collection.swift in Sources */,
 				A42B53911CBD3B03094A2E43 /* CollectionCardView.swift in Sources */,
 				763FA9D94D3D8775218DE665 /* CollectionDetailView.swift in Sources */,
