@@ -1,27 +1,31 @@
 # sync 구현 추적
 
 > v4 설계서의 P0 요구사항별 구현 상태를 추적합니다.
+>
+> **최종 갱신: 2026-08-11 (Phase 1 데이터 레이어 완료, PR #1).**
+> 실측으로 확인한 SwiftData 동작은 [SwiftData 실측](swiftdata-measured.md)에 따로 있다.
 
 ## 범례
 
 - ✅ 반영됨 — 코드에 구현 완료
+- 🟡 부분 반영 — 아래 계층은 됐고 위 계층이 남음 (예: 데이터 레이어 완료 · UI 미구현)
 - ⬜ 미반영 — 정책/설계만 확정, 코드 미구현
 
 ## P0
 
 | 상태 | 항목 | 설계 참조 | PR/커밋 |
 |------|------|-----------|---------|
-| ⬜ | SwiftData 스택 구성 + CloudKit 컨테이너 연결 | §7.2 | |
-| ⬜ | `Collection` · `Canvas` · `CanvasPhoto` 모델 정의 | §7 | |
-| ⬜ | CloudKit 제약 준수 검증 (기본값/optional/양방향/배열 회피) | §7.2 | |
-| ⬜ | `.externalStorage` 적용 (`renderedPNG` · 사진 원본) | §7 | |
-| ⬜ | 실기기 2대 동기화 검증 | S2 | |
-| ⬜ | **초안이 동기화되지 않는지** 검증 | §6.2, S2 | |
+| 🟡 | SwiftData 스택 구성 + CloudKit 컨테이너 연결 | §7.2 | PR #1 — `SoozipSchema.models` 앱 배선 완료. **CloudKit 연결은 실기기 미검증(S2)** |
+| ✅ | `Collection` · `Canvas` · `CanvasPhoto` 모델 정의 | §7 | PR #1 |
+| ✅ | CloudKit 제약 준수 검증 (기본값/optional/양방향/배열 회피) | §7.2 | PR #1 — `ModelSchemaTests`가 리플렉션으로 자동 검증 |
+| ✅ | `.externalStorage` 적용 (`renderedPNG` · 사진 원본) | §7 | PR #1 — 300KB 블롭 왕복 실측 |
+| ⬜ | 실기기 2대 동기화 검증 | S2 | **하드웨어 대기** — 개발자 계정 + 기기 2대 |
+| ⬜ | **초안이 동기화되지 않는지** 검증 | §6.2, S2 | **하드웨어 대기. Phase 2 착수의 전제** |
 | ✅ | `Drafts/` 파일 I/O (읽기·쓰기·삭제) | §6.2 | ed938fa — `SoozipDraft`, 테스트 24 |
 | ✅ | 고아 초안 정리 (앱 시작 시 스캔) | §6.9 | ed938fa — `pruneOrphans`, **앱 시작 배선은 Phase 2** |
 | ⬜ | LWW 충돌 정책 (저장 시점 판정) | §6.9 | |
-| ⬜ | `sortIndex` 중복 시 `createdAt` 타이브레이크 | §6.9 | |
-| ⬜ | 로컬 모드 자동 격하 + 설정 상태 배너 | §7.2, §14 | |
+| ✅ | `sortIndex` 중복 시 `createdAt` 타이브레이크 | §6.9 | PR #1 — 목록·표지 판정도 `id` 2차 키로 결정성 확보 |
+| 🟡 | 로컬 모드 자동 격하 + 설정 상태 배너 | §7.2, §14 | PR #1 — `SyncStatusResolver` 판정. **실제 신호 연결과 배너는 Phase 9** |
 | ⬜ | iCloud 사용 용량 표시 | §11.2 | |
 | ⬜ | 캐시 정리 | §11.2 | |
 | ⬜ | 메모리 경고 시 초안 flush + 썸네일 캐시 비우기 | §6.9 | |
