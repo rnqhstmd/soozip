@@ -156,13 +156,26 @@ public enum Layer: Equatable, Sendable {
     case stamp(StampLayer)
     case drawing(DrawingLayer)
 
+    /// v4 §5.2: **이동·핀치·회전·z-order·투명도는 5종이 완전히 동일한 경로를
+    /// 탄다.** 그 경로가 타입별 분기 없이 쓸 수 있는 단일 접근자다.
     public var transform: LayerTransform {
-        switch self {
-        case .photo(let l):   return l.transform
-        case .text(let l):    return l.transform
-        case .shape(let l):   return l.transform
-        case .stamp(let l):   return l.transform
-        case .drawing(let l): return l.transform
+        get {
+            switch self {
+            case .photo(let l):   return l.transform
+            case .text(let l):    return l.transform
+            case .shape(let l):   return l.transform
+            case .stamp(let l):   return l.transform
+            case .drawing(let l): return l.transform
+            }
+        }
+        set {
+            switch self {
+            case .photo(var l):   l.transform = newValue; self = .photo(l)
+            case .text(var l):    l.transform = newValue; self = .text(l)
+            case .shape(var l):   l.transform = newValue; self = .shape(l)
+            case .stamp(var l):   l.transform = newValue; self = .stamp(l)
+            case .drawing(var l): l.transform = newValue; self = .drawing(l)
+            }
         }
     }
 
