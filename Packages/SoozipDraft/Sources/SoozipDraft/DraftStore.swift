@@ -170,6 +170,19 @@ public struct DraftStore: Sendable {
         try encoder.encode(meta).write(to: metaURL(canvasID), options: .atomic)
     }
 
+    /// `layout.json`의 **원본 바이트**. 디코딩하지 않는다.
+    ///
+    /// 승격이 이걸 그대로 `Canvas.layoutJSON`에 넣는다 — 읽어서 다시 인코딩하면
+    /// 인코더 설정(키 순서·날짜 표기)이 양쪽에서 갈라지는 순간 사용자가 만든 것과
+    /// 다른 바이트가 저장된다. 재편집은 저장된 쪽을 여는데, 그때 차이가 드러난다.
+    public func readLayoutData(canvasID: String) throws -> Data {
+        let url = layoutURL(canvasID)
+        guard fm.fileExists(atPath: url.path) else {
+            throw DraftStoreError.layoutNotFound(canvasID: canvasID)
+        }
+        return try Data(contentsOf: url)
+    }
+
     public func readLayout(canvasID: String) throws -> LayoutDocument {
         let url = layoutURL(canvasID)
         guard fm.fileExists(atPath: url.path) else {
