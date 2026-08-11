@@ -249,6 +249,25 @@ private let week: TimeInterval = 7 * 24 * 3600
     }
 }
 
+@Test func 소속_비교는_대소문자를_구분하지_않는다() throws {
+    // 식별자는 UUID 문자열이고 `UUID.uuidString`은 대문자를 내지만
+    // `UUID(uuidString:)`은 소문자도 받는다. JSON·URL·`description`을 거치면
+    // 표기가 쉽게 바뀌는데, 표기 차이 하나로 **살아있는 모음집의 초안이 전부
+    // 고아로 판정되어 지워지는** 것이 이 API에서 가장 비싼 실패다.
+    try withTempStore { store in
+        let now = Date(timeIntervalSince1970: 0)
+        let id = UUID().uuidString                      // 대문자
+        try store.create(canvasID: "c1", collectionID: id.lowercased(),
+                         aspect: .post, now: now)
+
+        let removed = try store.pruneOrphans(knownCollectionIDs: [id],
+                                             now: now, maxAge: week)
+
+        #expect(removed.isEmpty)
+        #expect(try store.load(canvasID: "c1") != nil)
+    }
+}
+
 @Test func 경계값_정확히_칠일은_남긴다() throws {
     try withTempStore { store in
         let created = Date(timeIntervalSince1970: 0)

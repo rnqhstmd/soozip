@@ -236,12 +236,21 @@ public struct DraftStore: Sendable {
     /// 2. `updatedAt`이 `maxAge`를 넘겼다 — **생성이 아니라 마지막 수정 기준**이다.
     ///    오래 전에 만들었어도 어제 편집했으면 살아있는 초안이다
     /// 3. `meta.json`을 읽을 수 없다 — 소속도 시각도 모르므로 남기면 영영 안 지워진다
+    ///
+    /// **소속 비교는 대소문자를 구분하지 않는다.** 식별자는 UUID 문자열인데
+    /// `UUID.uuidString`은 대문자를 내고 `UUID(uuidString:)`은 소문자도 받는다 —
+    /// JSON·URL·`description`을 거치면 표기가 쉽게 바뀐다. 표기 차이 하나로
+    /// **살아있는 모음집의 초안이 전부 고아로 판정되어 지워지는** 것이
+    /// 이 API에서 가장 비싼 실패라, 양쪽을 정규화해 비교한다.
+    ///
+    /// `maxAge` 비교는 **엄격한 초과**다. 정확히 `maxAge`가 지난 초안은 남는다.
     @discardableResult
     public func pruneOrphans(knownCollectionIDs: Set<String>,
                              now: Date,
                              maxAge: TimeInterval) throws -> [String] {
         guard fm.fileExists(atPath: root.path) else { return [] }
 
+        let known = Set(knownCollectionIDs.map { $0.uppercased() })
         var removed: [String] = []
         for entry in try fm.contentsOfDirectory(atPath: root.path).sorted() {
             let dir = root.appendingPathComponent(entry, isDirectory: true)
@@ -253,7 +262,7 @@ public struct DraftStore: Sendable {
             let isOrphan: Bool
             if let draft = try load(canvasID: entry) {
                 let stale = now.timeIntervalSince(draft.meta.updatedAt) > maxAge
-                let lostCollection = !knownCollectionIDs.contains(draft.meta.collectionID)
+                let lostCollection = !known.contains(draft.meta.collectionID.uppercased())
                 isOrphan = stale || lostCollection
             } else {
                 isOrphan = true   // 메타 손상 또는 부재

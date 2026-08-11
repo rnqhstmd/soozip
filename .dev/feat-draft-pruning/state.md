@@ -14,7 +14,7 @@ args: "phase2 진행"
 flags: ""
 started: 2026-08-11T01:10:00
 warnings-baseline: 0
-current-step: "PR 생성"
+current-step: "코드 리뷰 반영 완료 — PR #2 갱신됨"
 phases:
   setup: completed
   requirements: completed
@@ -31,6 +31,7 @@ steps:
   complete:
     - verify-gate: completed
     - "AC 자가 검증": completed
+    - "코드 리뷰 반영 (7건 중 5건 수정 · 2건 차단조건 기록)": completed
 execution-log:
   - phase: setup
     result: "Phase 2 착수 전 로드맵 제약 확인 — S2 스파이크(초안 미동기화)가 승격 트랜잭션의 전제라 착수 금지. 사용자가 pruneOrphans 배선만 진행하기로 선택"
@@ -57,6 +58,24 @@ execution-log:
     result: "PASS — 앱 111개 2회 연속 통과 + 패키지 90개. 총 201개, 빌드 성공, 소스 경고 0건"
   - phase: complete
     result: "AC 자가 검증 PASS — AC-1~5 전부 테스트 대응. 단 FR-1의 앱 배선(.task) 자체는 테스트 미적용(위험 수용 기록됨)"
+  - phase: review
+    result: "/code-review high 실행 — 7건(medium 3 / low 4). 전부 유효, 오탐 0건. 자체 검토가 놓친 6건 포함"
+  - phase: review
+    finding: "[수정] uuidString 케이싱이 규약뿐 강제 없음 → pruneOrphans가 양쪽을 uppercased 비교. RED로 실제 삭제 재현 후 수정"
+  - phase: review
+    finding: "[수정] 케이싱 테스트가 동어반복이었다 — 양쪽을 같은 uuidString 식으로 만들어 어떤 규칙에서도 통과. 소문자를 일부러 넣는 테스트로 교체"
+  - phase: review
+    finding: "[수정] .task는 앱 시작 1회가 아니다 → 프로세스 단위 빗장 추가. create의 meta.json 쓰기 틈에 정리가 끼어들면 생성 중인 초안을 지운다"
+  - phase: review
+    finding: "[수정] S2 프로브가 Drafts 경로를 재하드코딩 → DraftStore.appDefault.root 참조"
+  - phase: review
+    finding: "[수정] 7일 경계 정확값 테스트 추가(앱 계층). 패키지에는 이미 있었다 — 리뷰어가 diff만 봐서 못 본 것"
+  - phase: review
+    finding: "[기록] CloudKit 부분 임포트 시 무에러 전량 삭제 — AC-4가 못 막는다. trust-ledger 차단 조건 + 로드맵 리스크표 + 코드 doc에 기록. CloudKit 활성화 전 필수"
+  - phase: review
+    finding: "[기록] 정리가 메인 스레드에서 돈다 — 초안 생성 경로(에디터)가 Phase 3이라 실측 데이터가 없어 보류"
+  - phase: review
+    result: "204개 통과(패키지 91 + 앱 113), 소스 경고 0건"
 next-task:
   id: PR
   step: 사용자 승인 대기

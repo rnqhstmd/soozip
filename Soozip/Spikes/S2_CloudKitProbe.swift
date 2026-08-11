@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import SoozipDraft
 
 // S2 스파이크 전용. Phase 1에서 Data/Models/ 아래 정식 모델로 대체하고 삭제한다.
 //
@@ -81,9 +82,10 @@ struct S2_CloudKitProbe: View {
         try? context.save()
     }
 
-    private var draftsURL: URL {
-        URL.applicationSupportDirectory.appending(path: "Drafts")
-    }
+    /// **경로를 다시 짜지 않고 앱이 쓰는 것을 그대로 본다.** 여기서 리터럴을
+    /// 반복하면 `appDefault`가 바뀌었을 때 프로브가 앱이 더 이상 안 쓰는 폴더를
+    /// 검증하게 된다 — 통과했는데 아무것도 증명 못 한 상태가 된다.
+    private var draftsURL: URL { DraftStore.appDefault.root }
 
     /// 초안 폴더는 **CloudKit 동기화 대상이 아니어야 한다**(v4 §6.2).
     /// 기기 A에서 만들고 기기 B에서 "없음"으로 보이는 것이 통과 기준이다.
