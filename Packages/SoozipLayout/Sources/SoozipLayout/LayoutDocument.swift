@@ -38,6 +38,45 @@ public struct Background: Codable, Equatable, Sendable {
     }
 }
 
+// MARK: - 레이어 범주와 상한
+
+/// 상한이 걸리는 단위 (v4 §5.13).
+///
+/// **병목은 익스포트 출력이 아니라 디코딩된 비트맵**이라 상한을 전체 개수가
+/// 아니라 타입별로 건다. `text`·`shape`·`stamp`는 메모리가 아니라 조작성
+/// 문제라 **셋을 합산해** 하나의 범주로 묶는다.
+///
+/// **분류와 상한이 여기 한 곳에만 있다.** `LayoutDocument.validate()`(사후 판정)와
+/// `LayerStore`(삽입 차단)가 둘 다 이것을 쓴다. 두 벌로 갈라지면 삽입은 막히는데
+/// 저장은 통과하는(또는 그 반대) 어긋남이 조용히 생긴다.
+public enum LayerCategory: CaseIterable, Sendable {
+    /// 2000px 한 장 디코딩이 약 16MB. PHPicker 선택 상한과 같은 8이다.
+    case photo
+    /// PencilKit을 캔버스 크기 비트맵으로 굽기 때문에 한 장이 사진과 맞먹는다.
+    case drawing
+    /// `text` + `shape` + `stamp` **합산**. 메모리보다 단일 선택 UI의 조작성 문제.
+    case decor
+
+    public var limit: Int {
+        switch self {
+        case .photo:   return 8
+        case .drawing: return 5
+        case .decor:   return 30
+        }
+    }
+}
+
+extension Layer {
+    /// 이 레이어가 어느 상한에 걸리는가.
+    public var category: LayerCategory {
+        switch self {
+        case .photo:                return .photo
+        case .drawing:              return .drawing
+        case .text, .shape, .stamp: return .decor
+        }
+    }
+}
+
 // MARK: - 레이어 상한 위반
 
 /// `LayoutDocument.validate()`의 결과. 상한은 v4 §5.13.
@@ -61,9 +100,11 @@ public struct LayoutDocument: Codable, Equatable, Sendable {
     /// 현재 스키마 버전. 상위 버전 문서는 디코딩을 거부한다.
     public static let currentVersion = 1
 
-    public static let photoLimit = 8
-    public static let drawingLimit = 5
-    public static let decorLimit = 30
+    // 상한의 정의는 `LayerCategory`에 있다. 여기 있는 것은 기존 호출부를 위한
+    // 별칭일 뿐이라 **두 벌이 아니다** — 값을 복제하지 않고 되짚는다.
+    public static var photoLimit: Int { LayerCategory.photo.limit }
+    public static var drawingLimit: Int { LayerCategory.drawing.limit }
+    public static var decorLimit: Int { LayerCategory.decor.limit }
 
     public var v: Int
     public var canvas: Size2
@@ -83,22 +124,19 @@ public struct LayoutDocument: Codable, Equatable, Sendable {
 
     /// 레이어 상한 위반을 찾는다. 위반이 없으면 `nil`.
     public func validate() -> LayoutViolation? {
-        var photos = 0, drawings = 0, decor = 0
-        for layer in layers {
-            switch layer {
-            case .photo:   photos += 1
-            case .drawing: drawings += 1
-            case .text, .shape, .stamp: decor += 1
+        // 분류는 `Layer.category`가 한다. 여기서 다시 `switch`를 쓰면 스토어의
+        // 삽입 차단과 분류가 두 벌이 된다.
+        var counts: [LayerCategory: Int] = [:]
+        for layer in layers { counts[layer.category, default: 0] += 1 }
+
+        for category in LayerCategory.allCases {
+            let count = counts[category] ?? 0
+            guard count > category.limit else { continue }
+            switch category {
+            case .photo:   return .photoLimitExceeded(count: count, limit: category.limit)
+            case .drawing: return .drawingLimitExceeded(count: count, limit: category.limit)
+            case .decor:   return .decorLimitExceeded(count: count, limit: category.limit)
             }
-        }
-        if photos > Self.photoLimit {
-            return .photoLimitExceeded(count: photos, limit: Self.photoLimit)
-        }
-        if drawings > Self.drawingLimit {
-            return .drawingLimitExceeded(count: drawings, limit: Self.drawingLimit)
-        }
-        if decor > Self.decorLimit {
-            return .decorLimitExceeded(count: decor, limit: Self.decorLimit)
         }
         return nil
     }

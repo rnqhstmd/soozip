@@ -1,5 +1,17 @@
 import Foundation
 
+/// 삽입 거부 사유 (v4 §5.13).
+///
+/// **조용히 `nil`을 돌려주지 않는다** — 호출부가 무시할 수 있고, 그러면 사용자가
+/// 넣었다고 생각한 레이어가 없는 채로 진행된다. 케이스가 범주와 상한을 들고
+/// 있어야 호출부가 "사진은 8장까지 넣을 수 있어요"를 만든다.
+///
+/// 정상 흐름에서는 도구 버튼이 이미 비활성이므로(`canInsert`) 던지는 일 자체가
+/// 드물다 — **던진다는 것은 배선이 판정을 안 썼다는 신호다.**
+public enum LayerLimitError: Error, Equatable {
+    case limitReached(category: LayerCategory, limit: Int)
+}
+
 /// 편집 중인 레이어 목록 (v4 §5.2 · §5.11).
 ///
 /// **배열 순서가 진실이고 z는 인덱스에서 파생된다.**
@@ -76,13 +88,38 @@ public struct LayerStore: Equatable, Sendable {
     ///
     /// 반환값은 버리는 값이 아니다 — `TOOL-3`(복제)이 v4 §5.12.1의 "복제본이
     /// 선택 상태가 된다"를 구현하려면 이 값을 선택에 넣어야 한다.
+    ///
+    /// - Throws: 그 범주가 상한에 도달했으면 `LayerLimitError.limitReached`.
+    ///   **복제도 이 경로를 타므로 상한에 함께 걸린다**(v4 §5.12.1).
     @discardableResult
-    public mutating func insert(_ layer: Layer) -> UUID {
+    public mutating func insert(_ layer: Layer) throws -> UUID {
+        let category = layer.category
+        guard canInsert(category) else {
+            throw LayerLimitError.limitReached(category: category, limit: category.limit)
+        }
         var stored = layer
         stored.transform.z = 0
         let entry = Entry(layer: stored)
         storage.append(entry)
         return entry.id
+    }
+
+    // MARK: - 상한 (v4 §5.13)
+
+    /// 그 범주의 레이어 수.
+    public func count(_ category: LayerCategory) -> Int {
+        storage.reduce(0) { $0 + ($1.layer.category == category ? 1 : 0) }
+    }
+
+    /// 더 넣을 수 있는 개수. **음수가 되지 않는다** — 다른 버전이 만들었거나
+    /// 손상된 문서는 상한을 넘긴 채로 들어올 수 있다.
+    public func remaining(_ category: LayerCategory) -> Int {
+        max(0, category.limit - count(category))
+    }
+
+    /// 도구 버튼 활성 판정 (v4 §5.13 "상한 도달 시 해당 도구를 비활성화").
+    public func canInsert(_ category: LayerCategory) -> Bool {
+        remaining(category) > 0
     }
 
     public mutating func remove(_ id: UUID) {

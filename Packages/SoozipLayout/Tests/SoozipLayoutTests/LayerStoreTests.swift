@@ -169,7 +169,7 @@ private func z값들(_ store: LayerStore) -> [Int] {
 
 // MARK: - AC-8: 어떤 순서로 섞어도 z는 촘촘하다
 
-@Test func 조작을_섞어도_순서가_예상대로_따라온다() {
+@Test func 조작을_섞어도_순서가_예상대로_따라온다() throws {
     // **z만 단언하면 아무것도 증명하지 못한다.** `layers`가 z를 인덱스에서
     // 채우므로 `z값들 == Array(0..<count)`는 구조적으로 항상 참이다 —
     // 조작이 어떻게 망가져도 초록인 항등식이다(실측 확인).
@@ -186,7 +186,7 @@ private func z값들(_ store: LayerStore) -> [Int] {
     store.bringToFront(store.entries[0].id);  확인("맨 앞으로", [1, 2, 3, 4, 0])
     store.sendBackward(store.entries[3].id);  확인("뒤로",     [1, 2, 4, 3, 0])
     store.remove(store.entries[1].id);        확인("삭제",     [1, 4, 3, 0])
-    store.insert(도형(99));                    확인("삽입",     [1, 4, 3, 0, 99])
+    try store.insert(도형(99));                확인("삽입",     [1, 4, 3, 0, 99])
     store.sendToBack(store.entries[2].id);    확인("맨 뒤로",  [3, 1, 4, 0, 99])
     store.bringForward(store.entries[0].id);  확인("앞으로",   [1, 3, 4, 0, 99])
     store.remove(store.entries[0].id);        확인("삭제 2",   [3, 4, 0, 99])
@@ -194,9 +194,9 @@ private func z값들(_ store: LayerStore) -> [Int] {
 
 // MARK: - AC-9~11: 삽입·삭제
 
-@Test func 새_레이어는_맨_앞에_오고_그_식별자를_돌려준다() {
+@Test func 새_레이어는_맨_앞에_오고_그_식별자를_돌려준다() throws {
     var store = LayerStore([도형(0), 도형(1)])
-    let 새id = store.insert(도형(9))
+    let 새id = try store.insert(도형(9))
 
     #expect(태그들(store) == [0, 1, 9])
     #expect(store.layers.last?.transform.z == 2)
