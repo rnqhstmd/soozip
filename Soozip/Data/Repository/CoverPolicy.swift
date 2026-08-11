@@ -25,6 +25,22 @@ enum CoverPolicy {
         }
     }
 
+    /// 사용자가 대표 캔버스를 직접 고른다. 성공하면 `true`.
+    ///
+    /// **대입은 여전히 이 타입 안에서만 일어난다.** 지정 경로가 생겼다고 리포지토리가
+    /// `coverCanvasID`에 직접 쓰면, `uuidString`은 대문자를 내는데 `UUID(uuidString:)`은
+    /// 소문자도 받는 비대칭이 대입 지점마다 스며들 자리를 얻는다.
+    ///
+    /// 후보에 없는 캔버스는 거부한다. 다른 모음집의 캔버스가 표지가 되는 것이
+    /// 정확히 `isConsistent`가 막는 상태다 — "표지가 이 모음집에 없는 캔버스를 가리킨다".
+    @discardableResult
+    static func designate(_ canvas: Canvas, for collection: Collection,
+                          candidates: [Canvas]) -> Bool {
+        guard candidates.contains(where: { $0.id == canvas.id }) else { return false }
+        collection.coverCanvasID = canvas.id.uuidString
+        return true
+    }
+
     static func isConsistent(_ collection: Collection, candidates: [Canvas]) -> Bool {
         // 이 계층의 불변식. 개별 AC는 아는 경로만 막지만 불변식은 아직 짜지 않은
         // 경로까지 막는다 — 실제로 초안 설계의 업서트가 AC 어디에도 안 걸리면서

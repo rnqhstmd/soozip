@@ -698,3 +698,98 @@ private func 날짜가_뒤섞인_캔버스3장(_ repo: LibraryRepository, in a: 
         #expect(repo.canvases(in: b).map(\.title) == ["B것"])
     }
 }
+
+// MARK: - AC-10·11: 이름 변경
+
+@Test @MainActor func 이름을_바꿔도_정렬과_표지는_그대로다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let c = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let 원래정렬 = a.sortIndex
+
+        try repo.renameCollection(a, to: "제주")
+
+        #expect(a.name == "제주")
+        #expect(a.sortIndex == 원래정렬)
+        #expect(a.coverCanvasID == c.id.uuidString)
+    }
+}
+
+@Test @MainActor func 스물한자로는_이름을_바꿀_수_없다() throws {
+    // 생성과 변경이 같은 규칙을 써야 한다 — 한쪽만 느슨하면 그 경로로 우회된다.
+    try withLibrary { repo, _ in
+        let a = try repo.createCollection(name: "여행", now: try testAnchor())
+
+        #expect(throws: RepositoryError.collectionNameOutOfRange(
+            length: 21, allowed: InputLimits.collectionName)) {
+            try repo.renameCollection(a, to: String(repeating: "가", count: 21))
+        }
+        #expect(a.name == "여행")
+    }
+}
+
+// MARK: - AC-12·13: 순서 재배치 (BR-4)
+
+@Test @MainActor func 재배치한_순서대로_조회된다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let 가 = try repo.createCollection(name: "가", now: anchor)
+        let 나 = try repo.createCollection(name: "나", now: try day(1, from: anchor))
+        let 다 = try repo.createCollection(name: "다", now: try day(2, from: anchor))
+
+        try repo.reorderCollections([다, 가, 나])
+
+        #expect(try repo.collections().map(\.name) == ["다", "가", "나"])
+    }
+}
+
+@Test @MainActor func 재배치하면_sortIndex가_0부터_다시_매겨진다() throws {
+    // 보이는 순서를 그대로 0..n-1로 굽는다. 기존 값에 끼워 넣지 않는 이유는
+    // 두 기기가 각자 끼워 넣으면 값이 촘촘해지다 결국 겹치기 때문이다.
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let 가 = try repo.createCollection(name: "가", now: anchor)
+        let 나 = try repo.createCollection(name: "나", now: try day(1, from: anchor))
+        let 다 = try repo.createCollection(name: "다", now: try day(2, from: anchor))
+
+        try repo.reorderCollections([다, 가, 나])
+
+        #expect(다.sortIndex == 0)
+        #expect(가.sortIndex == 1)
+        #expect(나.sortIndex == 2)
+    }
+}
+
+// MARK: - AC-8·9: 대표 캔버스 지정 (리포지토리 경로)
+
+@Test @MainActor func 소속_캔버스를_대표로_지정할_수_있다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let 첫째 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let 둘째 = try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)),
+                                        in: a, now: anchor)
+        #expect(a.coverCanvasID == 첫째.id.uuidString)
+
+        try repo.setCover(둘째, of: a)
+
+        #expect(a.coverCanvasID == 둘째.id.uuidString)
+    }
+}
+
+@Test @MainActor func 다른_모음집의_캔버스는_대표로_지정할_수_없다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "가", now: anchor)
+        let b = try repo.createCollection(name: "나", now: anchor)
+        let a캔버스 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let b캔버스 = try repo.createCanvas(canvasInput(createdAt: anchor), in: b, now: anchor)
+
+        #expect(throws: RepositoryError.canvasNotInCollection(
+            canvasID: b캔버스.id, collectionID: a.id)) {
+            try repo.setCover(b캔버스, of: a)
+        }
+        #expect(a.coverCanvasID == a캔버스.id.uuidString)
+    }
+}

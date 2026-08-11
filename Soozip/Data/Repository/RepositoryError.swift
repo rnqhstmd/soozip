@@ -26,4 +26,11 @@ enum InputLimits {
 enum RepositoryError: Error, Equatable {
     case collectionNameOutOfRange(length: Int, allowed: ClosedRange<Int>)
     case canvasTitleOutOfRange(length: Int, allowed: ClosedRange<Int>)
+
+    /// 대표 캔버스로 지정하려는 캔버스가 그 모음집에 속하지 않는다.
+    ///
+    /// 옵셔널 반환이 아니라 에러인 이유: 이건 "없어서 못 찾았다"가 아니라 **호출부가
+    /// 잘못된 조합을 넘긴 것**이다. 조용히 무시하면 사용자가 대표를 골랐는데 아무
+    /// 일도 안 일어나는 화면이 된다.
+    case canvasNotInCollection(canvasID: UUID, collectionID: UUID)
 }
