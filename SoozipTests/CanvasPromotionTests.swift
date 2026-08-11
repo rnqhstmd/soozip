@@ -24,8 +24,13 @@ private func 자리(_ i: Int) -> LayerTransform {
 
 /// `assetId`는 **반드시 UUID 문자열**이다 — `CanvasPhoto.id`가 그 값을 그대로
 /// 받기 때문이다(선언부 계약). 문자열이 자유로우면 승격이 연결을 못 만든다.
+///
+/// `aspect` 기본값이 `.post`인 것에 기대지 마라 — **`.post`의 rawValue는 0이고
+/// `Canvas.aspect`의 기본값도 0이라, `.post` 초안만 쓰면 "이관했다"와 "아예 안
+/// 넣었다"가 같은 바이트를 낸다.** 종횡비를 재는 테스트는 `.story`를 써야 한다.
 @MainActor
-private func layout(assetIDs: [UUID] = [], texts: Int = 0) -> LayoutDocument {
+private func layout(assetIDs: [UUID] = [], texts: Int = 0,
+                    aspect: CanvasAspect = .post) -> LayoutDocument {
     var layers: [Layer] = []
     for (i, assetID) in assetIDs.enumerated() {
         layers.append(.photo(PhotoLayer(assetId: assetID.uuidString,
@@ -36,7 +41,7 @@ private func layout(assetIDs: [UUID] = [], texts: Int = 0) -> LayoutDocument {
                                       size: 48, color: "#000000", align: .left,
                                       transform: 자리(assetIDs.count + i))))
     }
-    return LayoutDocument(aspect: .post, layers: layers)
+    return LayoutDocument(aspect: aspect, layers: layers)
 }
 
 /// 사진 n장을 서로 다른 `assetId`로.
@@ -48,9 +53,10 @@ private func 사진들(_ n: Int) -> [UUID] { (0..<n).map { _ in UUID() } }
 @discardableResult
 private func 초안준비(_ store: DraftStore, collectionID: String, canvasID: String,
                     document: LayoutDocument, now: Date,
-                    photoBytes: [String: Data] = [:]) throws -> String {
+                    photoBytes: [String: Data] = [:],
+                    aspect: CanvasAspect = .post) throws -> String {
     try store.create(canvasID: canvasID, collectionID: collectionID,
-                     aspect: .post, now: now)
+                     aspect: aspect, now: now)
     try store.writeLayout(document, canvasID: canvasID, now: now)
     for (assetID, data) in photoBytes {
         try store.writePhoto(data, assetID: assetID, format: .jpeg, canvasID: canvasID)
@@ -81,9 +87,36 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
 
             let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
 
+            // **초안 식별자가 그대로 캔버스 식별자가 된다**(CanvasPromoter 주석의 계약).
+            // 이 줄이 없으면 `id: canvasUUID`를 `id: UUID()`로 바꿔도 전부 초록이다 —
+            // 그러면 6단계가 초안을 지운 뒤 초안↔캔버스 대응이 영구히 사라지고,
+            // 재편집이 원본을 못 찾는데 아무 신호도 없다.
+            #expect(canvas.id == UUID(uuidString: id))
             #expect(canvas.collection?.id == a.id)
             #expect(canvas.renderedPNG == 렌더결과)
             #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 1)
+        }
+    }
+}
+
+@Test @MainActor func 초안의_종횡비가_캔버스로_이관된다() throws {
+    // **`.story`여야 한다.** `.post`의 rawValue는 0이고 `Canvas.aspect`의 기본값도
+    // 0이라, `.post` 초안으로는 `aspect: draft.meta.aspect`를 통째로 지워도 초록이다.
+    //
+    // 어긋나면 스토리(9:16) 캔버스가 4:5 좌표계로 열려 재렌더·재편집의 기하가
+    // 조용히 바뀐다. `layoutJSON` 안의 aspect와 `Canvas.aspect`가 갈라진 채 남는다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let id = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
+                       document: layout(texts: 1, aspect: .story), now: anchor,
+                       aspect: .story)
+
+            let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
+
+            #expect(canvas.aspectPreset == .story)
         }
     }
 }
@@ -367,14 +400,14 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
 
 // MARK: - CANVAS-3: 사진의 소유 관계
 
-// **여기 위의 사진 테스트들은 전부 전역 조회다** — `fetch(FetchDescriptor<CanvasPhoto>())`.
+// **여기 위의 사진 테스트들은 전부 전역 조회다** — `fetch`/`fetchCount`.
 // 바이트가 다 있고 개수가 맞아도 **어느 사진이 어느 캔버스 것인지는 안 잰다.**
 //
 // `LibraryRepositoryTests`의 cascade 테스트들도 못 잡는다. 그쪽은 `photo.canvas`를
 // **테스트가 직접 걸고** 삭제를 재므로, 승격 경로가 그 관계를 거는지는 밖에 있다.
 //
-// 실측: `CanvasPromoter.attach`에서 `record.canvas = canvas`를 지우면 **254개가
-// 전부 초록이다.** 그동안 사진은 주인 없는 레코드가 되어 cascade가 안 닿고
+// 실측: `CanvasPromoter.attach`에서 `record.canvas = canvas`를 지우면 **이 타깃의
+// 나머지가 전부 초록이었다.** 그동안 사진은 주인 없는 레코드가 되어 cascade가 안 닿고
 // (`externalStorage`라 파일이 계속 쌓인다), `canvas.photos`가 비어 재편집이
 // 사진을 못 찾는다.
 
@@ -393,9 +426,18 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
 
             // 전역이 아니라 **캔버스를 통해** 되짚는다.
+            // `#require`는 게이트가 아니다 — `photos`의 기본값은 nil이 아니라 `[]`라
+            // 빈 배열도 그대로 통과한다. 개수를 따로 잰다.
             let owned = try #require(canvas.photos)
+            #expect(owned.count == 2)
             #expect(Set(owned.map(\.data)) == [Data([0xAA]), Data([0xBB])])
-            #expect(owned.allSatisfy { $0.canvas?.id == canvas.id })
+            // **캔버스를 통해 `assetId` 계약까지 되짚는 유일한 자리다.**
+            // 334행의 되짚기 테스트는 전역 조회라 캔버스가 둘이면 남의 사진을 집는다.
+            //
+            // `owned.allSatisfy { $0.canvas?.id == canvas.id }`는 여기 두지 않는다 —
+            // SwiftData가 역관계 일관성을 유지하므로 `canvas.photos`의 원소는 정의상
+            // 그 캔버스를 가리킨다. 참이 될 수밖에 없는 줄은 이빨이 없다.
+            #expect(Set(owned.map(\.id)) == Set(assets))
         }
     }
 }
@@ -421,8 +463,10 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             let 첫캔버스 = try promoter(store, library).promote(canvasID: 첫초안, now: anchor)
             let 둘째캔버스 = try promoter(store, library).promote(canvasID: 둘째초안, now: anchor)
 
-            #expect(try #require(첫캔버스.photos).map(\.data) == [Data([0xAA])])
-            #expect(try #require(둘째캔버스.photos).map(\.data) == [Data([0xBB])])
+            // **배열 `==`를 쓰지 않는다.** SwiftData의 to-many 순서는 보장되지 않아
+            // (`LibraryRepository` 주석 참조) 사진을 한 장만 더 붙여도 간헐 실패한다.
+            #expect(Set(try #require(첫캔버스.photos).map(\.data)) == [Data([0xAA])])
+            #expect(Set(try #require(둘째캔버스.photos).map(\.data)) == [Data([0xBB])])
         }
     }
 }
