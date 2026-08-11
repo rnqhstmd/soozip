@@ -51,6 +51,19 @@ func withLibrary(checksCoverInvariant: Bool = true,
     }
 }
 
+/// 통계 테스트용. 데이터는 `LibraryRepository`로 만들고 `StatsRepository`로 잰다.
+///
+/// 둘이 **같은 컨텍스트**를 보게 묶는 이유: 통계가 별도 컨텍스트를 들면 방금 만든
+/// 캔버스가 안 잡히는 것이 테스트 실패가 아니라 픽스처 실수로 보인다.
+/// `calendar`를 주입하는 것은 "이번 달"·"연속 기록" 경계가 타임존에 걸려 있어서다.
+@MainActor
+func withStats(sourceLocation: SourceLocation = #_sourceLocation,
+               _ body: (LibraryRepository, StatsRepository) throws -> Void) throws {
+    try withLibrary(sourceLocation: sourceLocation) { library, context in
+        try body(library, StatsRepository(context: context, calendar: testCalendar))
+    }
+}
+
 // MARK: - 시간 픽스처
 
 /// **`timeZone`을 박는다.** `Calendar(identifier: .gregorian)`은 `TimeZone.current`를
