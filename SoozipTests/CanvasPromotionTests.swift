@@ -496,6 +496,95 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
     }
 }
 
+// MARK: - CANVAS-3b: 멱등성 가드
+
+// `@Attribute(.unique)`는 CloudKit 제약상 못 쓴다. **중복을 막을 수 있는 곳이
+// 승격 경로밖에 없다.**
+//
+// 두 번 승격되는 경로는 실재한다 — 6단계 정리는 실패해도 되돌리지 않으므로
+// (설계상 수용) "캔버스는 저장됐는데 초안이 남은" 상태가 정상적으로 존재하고,
+// 그때 "이어서 만들까요?" 배너가 이미 저장된 캔버스의 초안을 연다.
+
+/// 1차 승격에서 6단계만 실패시켜 **초안이 남은 상태**를 만든다.
+/// AC가 말하는 재승격의 실제 발생 조건이 이것이다.
+@MainActor
+private func 정리실패로_초안이_남은_승격(_ store: DraftStore, _ library: LibraryRepository,
+                                 collectionID: String, canvasID: String,
+                                 assets: [UUID], now: Date) throws {
+    try 초안준비(store, collectionID: collectionID, canvasID: canvasID,
+               document: layout(assetIDs: assets), now: now,
+               photoBytes: [assets[0].uuidString: Data([0xAA]),
+                            assets[1].uuidString: Data([0xBB])])
+    try promoter(store, library).promote(canvasID: canvasID, now: now,
+                                         cleanup: { _ in throw 주입된실패() })
+}
+
+@Test @MainActor func 이미_승격된_초안을_다시_승격하면_거부된다() throws {
+    try withDraftStore { store in
+        try withLibrary { library, context in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let id = UUID().uuidString
+            try 정리실패로_초안이_남은_승격(store, library, collectionID: a.id.uuidString,
+                                   canvasID: id, assets: assets, now: anchor)
+            #expect(try store.load(canvasID: id) != nil)   // 재승격의 전제
+
+            #expect(throws: PromotionError.alreadyPromoted(canvasID: id)) {
+                try promoter(store, library).promote(canvasID: id, now: anchor)
+            }
+
+            // **중복 레코드가 생기지 않는다.** 이게 요점이다 — 같은 id의 Canvas가
+            // 둘이면 layoutJSON의 assetId로 사진을 되짚을 때 어느 쪽이 나올지 모른다.
+            #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 1)
+            #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 2)
+        }
+    }
+}
+
+@Test @MainActor func 재승격이_거부돼도_초안은_남는다() throws {
+    // 이 도메인의 불변 계약 — 거부는 초안을 지울 이유가 아니다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let id = UUID().uuidString
+            try 정리실패로_초안이_남은_승격(store, library, collectionID: a.id.uuidString,
+                                   canvasID: id, assets: assets, now: anchor)
+
+            #expect(throws: PromotionError.alreadyPromoted(canvasID: id)) {
+                try promoter(store, library).promote(canvasID: id, now: anchor)
+            }
+
+            #expect(try store.load(canvasID: id) != nil)
+        }
+    }
+}
+
+@Test @MainActor func 재승격은_렌더보다_먼저_거부된다() throws {
+    // FR-2. 거부가 렌더·사진 읽기보다 뒤에 있으면 수 MB 렌더를 헛돌리고,
+    // 더 나쁘게는 **거부하기 전에 뭔가를 이미 만들었을 수** 있다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let id = UUID().uuidString
+            try 정리실패로_초안이_남은_승격(store, library, collectionID: a.id.uuidString,
+                                   canvasID: id, assets: assets, now: anchor)
+
+            // 렌더러가 불리면 그 자리에서 다른 에러가 난다. alreadyPromoted가
+            // 나온다는 것은 **렌더까지 가지도 않았다**는 뜻이다.
+            let 부르면터지는렌더러 = promoter(store, library,
+                                       render: { _ in throw 주입된실패() })
+            #expect(throws: PromotionError.alreadyPromoted(canvasID: id)) {
+                try 부르면터지는렌더러.promote(canvasID: id, now: anchor)
+            }
+        }
+    }
+}
+
 // MARK: - 식별자 계약
 
 @Test @MainActor func UUID가_아닌_초안_식별자는_거부된다() throws {

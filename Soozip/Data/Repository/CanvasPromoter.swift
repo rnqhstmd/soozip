@@ -17,6 +17,9 @@ enum PromotionError: Error, Equatable {
     /// 식별자가 UUID 문자열이 아니다. **조용히 새 값을 발급하지 않는다** —
     /// 그러면 초안과 캔버스가 다른 것이 되고 아무도 모른다.
     case malformedIdentifier(String)
+    /// 이 식별자의 캔버스가 이미 있다. 정리(6단계)가 실패해 초안이 남은 뒤
+    /// 같은 초안을 다시 저장하면 여기로 온다.
+    case alreadyPromoted(canvasID: String)
 }
 
 /// 초안을 저장 확정된 `Canvas`로 승격한다 (v4 §6.6).
@@ -64,6 +67,20 @@ struct CanvasPromoter {
         // 원본을 못 찾는데 아무 신호도 없다.
         guard let canvasUUID = UUID(uuidString: canvasID) else {
             throw PromotionError.malformedIdentifier(canvasID)
+        }
+        // **중복을 막을 수 있는 곳이 여기밖에 없다** — `@Attribute(.unique)`는
+        // CloudKit 제약상 못 쓴다(`LibraryRepository` 참조).
+        //
+        // 6단계 정리는 실패해도 되돌리지 않으므로(설계상 수용) "캔버스는 저장됐는데
+        // 초안이 남은" 상태가 정상적으로 존재하고, 그때 "이어서 만들까요?" 배너가
+        // 이미 저장된 캔버스의 초안을 연다. 가드가 없으면 같은 `id`의 `Canvas`가
+        // 둘, 같은 `id`의 `CanvasPhoto`가 **서로 다른 캔버스를 가리키며** 공존해
+        // `assetId`로 사진을 되짚을 때 어느 쪽이 나올지 알 수 없게 된다.
+        //
+        // **렌더·사진 읽기보다 먼저 판정한다.** 뒤에 두면 수 MB 렌더를 헛돌리고,
+        // 더 나쁘게는 거부하기 전에 뭔가를 이미 만들었을 수 있다.
+        guard try !canvasExists(canvasUUID) else {
+            throw PromotionError.alreadyPromoted(canvasID: canvasID)
         }
 
         // 원본 바이트와 디코딩본을 함께 얻는다. 저장에는 원본을 쓴다(아래 4단계).
@@ -130,6 +147,17 @@ struct CanvasPromoter {
     }
 
     // MARK: - 내부
+
+    /// 같은 식별자의 캔버스가 이미 있는가.
+    ///
+    /// **여기서는 `#Predicate`를 쓴다.** `LibraryRepository.canvasesFetched`가
+    /// `#Predicate`를 피하는 이유는 **옵셔널 관계를 경유한 비교**가 불안정해서인데,
+    /// 여기는 스칼라 속성 하나를 직접 비교하므로 그 사례가 아니다. 전량 fetch를
+    /// 하면 승격마다 `Canvas` 전체를 훑게 된다.
+    private func canvasExists(_ id: UUID) throws -> Bool {
+        let descriptor = FetchDescriptor<Canvas>(predicate: #Predicate { $0.id == id })
+        return try library.context.fetchCount(descriptor) > 0
+    }
 
     private func collection(withID id: String) throws -> Collection? {
         // 대소문자를 구분하지 않는다 — `uuidString`은 대문자를 내지만
