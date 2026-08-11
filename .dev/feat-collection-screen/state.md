@@ -15,7 +15,7 @@ args: "phase6시작"
 flags: ""
 started: 2026-08-11T01:35:00
 warnings-baseline: 0
-current-step: "RGR T2: RED"
+current-step: "RGR T3: RED"
 phases:
   setup: completed
   requirements: completed
@@ -31,7 +31,7 @@ steps:
     - 설계 + testability 평가: completed (8/10 PASS)
   implement:
     - "RGR T1 리포지토리 확장 + CoverPolicy.designate": { red: completed, green: completed, refactor: completed, test-count: 213 }
-    - "RGR T2 카드 표시값 + 표지 폴백": pending
+    - "RGR T2 카드 표시값 + 표지 폴백": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 223 }
     - "RGR T3 상세 정렬 + 초안 배너 + 케이싱": pending
     - "RGR T4 삭제 경고": pending
     - "RGR T5 고스트 힌트": pending
@@ -59,11 +59,17 @@ execution-log:
     result: "AC-28(릴리스에 스파이크 미포함)은 자동 검증 불가 — #if DEBUG는 컴파일 타임이고 테스트는 DEBUG에서 돈다. 코드 리뷰 확인 + 위험 수용 기록으로 대체"
   - phase: implement
     result: "T1 완료 — rename/reorder/setCover + CoverPolicy.designate + canvasNotInCollection. 9개 추가로 213개 통과(앱 122), 회귀 0건"
+  - phase: implement
+    result: "T2 완료 — CoverArt/CollectionCard/CarouselItem + CollectionPresenter. 10개 추가로 223개 통과(앱 132), 회귀 0건"
+  - phase: implement
+    decision: "[+]를 CarouselItem의 케이스로 둔다 — 뷰가 알아서 앞에 붙이게 하면 '맨 좌측 고정'이 테스트 밖 규칙이 된다"
+  - phase: implement
+    decision: "card(for:)는 던지지 않는다 — 표시 경로라 조회 실패를 빈 목록으로 접는다. 던지면 @Query가 도는 화면마다 오류 처리가 번진다"
 next-task:
-  id: T2
+  id: T3
   step: RED
-  scope: "CollectionCard + CollectionPresenter — 표지 폴백 3단계"
-  ac: "AC-1~7, AC-14"
-  spec: ".dev/feat-collection-screen/design.md §3"
-  notes: "canDecodeImage 클로저 주입이 AC-6의 전제. CoverPolicy.resolve를 그대로 재사용한다"
-  verify-command: "./scripts/test.sh  # 현재 213개 (패키지 91 + 앱 122)"
+  scope: "상세 표시값(캔버스 정렬) + 초안 배너 판정 + DraftStore 케이싱 정규화"
+  ac: "AC-15~19"
+  spec: ".dev/feat-collection-screen/design.md §6"
+  notes: "draft(forCollection:)이 == 비교라 Phase 2와 같은 케이싱 결함이 남아 있다. 여기서는 '배너가 영영 안 뜸'으로 나타난다 — RED로 재현 후 정규화"
+  verify-command: "./scripts/test.sh  # 현재 223개 (패키지 91 + 앱 132)"
