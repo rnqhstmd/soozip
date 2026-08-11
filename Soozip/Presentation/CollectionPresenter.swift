@@ -58,12 +58,25 @@ struct CollectionPresenter {
 
     /// 정렬 순서의 모음집 카드. 「전체 보기」가 이걸 그대로 쓴다.
     func cards() throws -> [CollectionCard] {
-        try library.collections().map(card(for:))
+        cards(for: try library.collections())
     }
 
     /// 캐러셀 항목. `[+]`가 항상 맨 앞이다.
     func carouselItems() throws -> [CarouselItem] {
-        [.newCollection] + (try cards()).map(CarouselItem.collection)
+        carouselItems(for: try library.collections())
+    }
+
+    /// 이미 읽어 온 모음집으로 카드를 만든다.
+    ///
+    /// **뷰가 쓰는 입구다.** 화면은 `@Query`로 목록을 받으므로 여기서 다시 fetch하면
+    /// 두 출처가 생긴다 — 위의 `cards()`는 이 함수에 위임만 하므로 테스트가 덮은
+    /// 경로와 화면이 도는 경로가 같은 코드다.
+    func cards(for collections: [Collection]) -> [CollectionCard] {
+        collections.map(card(for:))
+    }
+
+    func carouselItems(for collections: [Collection]) -> [CarouselItem] {
+        [.newCollection] + cards(for: collections).map(CarouselItem.collection)
     }
 
     /// 카드 하나. **던지지 않는다** — 표시 경로라 조회 실패를 빈 목록으로 접는다.

@@ -6,12 +6,12 @@ import SoozipDraft
 struct SoozipApp: App {
     var body: some Scene {
         WindowGroup {
-            // Phase 0 전용. Phase 3~6의 정식 화면으로 대체하며 제거한다.
+            // Phase 6부터 여기가 정식 첫 화면이다.
             //
-            // 실기기 스파이크가 둘 남아 있고 한 번에 하나만 띄운다.
-            // S2로 바꾸려면 아래 한 줄을 `S2_CloudKitProbe()`로 교체한다 —
-            // **프로브는 자기 컨테이너를 직접 들고 있다.**
-            S1_GestureProbe()
+            // 스파이크는 지운 것이 아니라 `#if DEBUG` 진입점(`SpikeMenu`)으로
+            // 옮겼다 — 로드맵이 S1·S2 측정 전 삭제를 금지했고, 측정하려면 실행
+            // 가능해야 하며, 릴리스 빌드에 실려서도 안 되기 때문이다.
+            CollectionHomeView()
                 .pruneOrphanedDraftsOnLaunch()
         }
         // 앱 컨테이너는 정식 스키마만 싣는다. 목록을 여기 직접 적지 않는 이유는
