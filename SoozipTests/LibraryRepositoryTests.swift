@@ -345,3 +345,167 @@ private func canvasInput(title: String = "",
         #expect(a.coverCanvasID == c1.id.uuidString)
     }
 }
+
+// MARK: - 사진 픽스처
+
+/// 사진을 캔버스에 붙인다. `LibraryRepository`에 `addPhoto`를 만들지 않기로 한 결정에
+/// 따라 **테스트가 `CanvasPhoto`를 직접 insert한다** — 블롭을 쓰는 메서드가 리포지토리에
+/// 없어야 Phase 2가 별도 `@ModelActor` 임포터를 이 타입을 건드리지 않고 붙일 수 있다.
+@MainActor
+private func attachPhotos(_ count: Int, to canvas: Canvas, in context: ModelContext) {
+    for i in 0..<count {
+        let photo = CanvasPhoto()
+        photo.data = Data([UInt8(i)])
+        photo.canvas = canvas
+        context.insert(photo)
+    }
+}
+
+// MARK: - AC-8·9·10: 삭제 후 표지 재계산
+
+@Test @MainActor func 표지_캔버스를_지우면_남은_것_중_가장_최근이_표지가_된다() throws {
+    // 캔버스를 셋 두는 이유: 둘만 두면 "남은 하나"와 "가장 최근"이 구분되지 않아
+    // BR-6을 무시하고 아무거나 고르는 구현도 초록이 된다.
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let 표지 = try repo.createCanvas(canvasInput(createdAt: try day(9, from: anchor)),
+                                         in: a, now: anchor)
+        try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)), in: a, now: anchor)
+        let 남은것중_최신 = try repo.createCanvas(canvasInput(createdAt: try day(5, from: anchor)),
+                                                in: a, now: anchor)
+        #expect(a.coverCanvasID == 표지.id.uuidString)
+
+        try repo.deleteCanvas(표지)
+
+        #expect(a.coverCanvasID == 남은것중_최신.id.uuidString)
+    }
+}
+
+@Test @MainActor func 표지가_아닌_캔버스를_지우면_표지는_그대로다() throws {
+    try withLibrary { repo, _ in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let 표지 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let 비표지 = try repo.createCanvas(canvasInput(createdAt: try day(3, from: anchor)),
+                                          in: a, now: anchor)
+
+        try repo.deleteCanvas(비표지)
+
+        #expect(a.coverCanvasID == 표지.id.uuidString)
+    }
+}
+
+@Test @MainActor func 마지막_캔버스를_지우면_표지가_빈_문자열이_된다() throws {
+    // 유령 표지가 생기는 자리다 — 삭제 후 표지를 비우지 않으면 모음집이
+    // 존재하지 않는 캔버스를 계속 가리킨다(BR-4).
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let only = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+
+        try repo.deleteCanvas(only)
+
+        #expect(a.coverCanvasID.isEmpty)
+        #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 0)
+    }
+}
+
+// MARK: - AC-17: 캔버스 삭제가 사진까지 지운다 (cascade)
+
+@Test @MainActor func 캔버스를_지우면_그_캔버스의_사진도_사라진다() throws {
+    // `isDeleted`가 아니라 `fetchCount`로 본다 — 실측: save() 이후 isDeleted는
+    // false로 되돌아온다.
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        attachPhotos(3, to: c1, in: context)
+        try context.save()
+        #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 3)
+
+        try repo.deleteCanvas(c1)
+
+        #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 0)
+    }
+}
+
+@Test @MainActor func 캔버스_삭제는_다른_캔버스의_사진을_건드리지_않는다() throws {
+    // cascade가 과하게 번지지 않는지 — 범위를 재는 쪽이 없으면
+    // "전부 지우기"도 위 테스트를 통과한다.
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let 지울것 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let 남길것 = try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)),
+                                          in: a, now: anchor)
+        attachPhotos(3, to: 지울것, in: context)
+        attachPhotos(2, to: 남길것, in: context)
+        try context.save()
+
+        try repo.deleteCanvas(지울것)
+
+        #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 2)
+        #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 1)
+    }
+}
+
+// MARK: - AC-16: 모음집 삭제가 캔버스와 사진까지 지운다 (전이 cascade)
+
+@Test @MainActor func 모음집을_지우면_소속_캔버스와_사진이_전부_사라진다() throws {
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        let c2 = try repo.createCanvas(canvasInput(createdAt: try day(1, from: anchor)),
+                                       in: a, now: anchor)
+        attachPhotos(2, to: c1, in: context)
+        attachPhotos(2, to: c2, in: context)
+        try context.save()
+
+        try repo.deleteCollection(a)
+
+        #expect(try context.fetchCount(FetchDescriptor<Collection>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 0)
+    }
+}
+
+@Test @MainActor func 모음집_삭제는_다른_모음집을_건드리지_않는다() throws {
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let 지울것 = try repo.createCollection(name: "지울것", now: anchor)
+        let 남길것 = try repo.createCollection(name: "남길것", now: try day(1, from: anchor))
+        try repo.createCanvas(canvasInput(createdAt: anchor), in: 지울것, now: anchor)
+        let 살아남을_캔버스 = try repo.createCanvas(canvasInput(createdAt: anchor),
+                                                 in: 남길것, now: anchor)
+
+        try repo.deleteCollection(지울것)
+
+        #expect(try repo.collections().map(\.name) == ["남길것"])
+        #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 1)
+        #expect(남길것.coverCanvasID == 살아남을_캔버스.id.uuidString)
+    }
+}
+
+// MARK: - cascade 우회 경로 (deleteRule 선언이 유일한 계약임을 고정)
+
+@Test @MainActor func 리포지토리를_거치지_않고_지워도_자식이_사라진다() throws {
+    // **리포지토리를 일부러 우회한다.** 이 테스트가 없으면 deleteRule이 .nullify로
+    // 바뀌어도 리포지토리 테스트는 전부 초록이고, 조용히 깨지는 것은 Phase 6의
+    // @Query + 스와이프 삭제 경로 하나뿐이다 — 정확히 우리가 피하려던 형태다.
+    try withLibrary { repo, context in
+        let anchor = try testAnchor()
+        let a = try repo.createCollection(name: "여행", now: anchor)
+        let c1 = try repo.createCanvas(canvasInput(createdAt: anchor), in: a, now: anchor)
+        attachPhotos(2, to: c1, in: context)
+        try context.save()
+
+        context.delete(a)          // repo.deleteCollection이 아니다
+        try context.save()
+
+        #expect(try context.fetchCount(FetchDescriptor<Collection>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 0)
+    }
+}
