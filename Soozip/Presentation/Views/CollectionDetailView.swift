@@ -25,7 +25,7 @@ struct CollectionDetailView: View {
             ToolbarItem(placement: .topBarTrailing) { orderMenu }
             ToolbarItem(placement: .topBarTrailing) { addCanvasButton }
         }
-        .task { refreshDraftBanner() }
+        .task { await refreshDraftBanner() }
     }
 
     // MARK: - 캔버스 그리드
@@ -72,10 +72,19 @@ struct CollectionDetailView: View {
         .padding(.horizontal, 16)
     }
 
+    /// **메인 액터에서 디스크를 훑지 않는다.** 판정은 `Drafts/` 전체를 열거하고
+    /// 초안마다 `meta.json`을 디코딩하는데, 그대로 메인에서 돌리면 초안 수에
+    /// 비례해 첫 프레임이 밀린다.
+    ///
     /// 실패하면 배너를 띄우지 않는다. 없는 초안을 있다고 하는 쪽이 더 나쁘다 —
-    /// 눌렀는데 아무것도 없으면 사용자는 작업물이 사라졌다고 읽는다.
-    private func refreshDraftBanner() {
-        hasDraft = (try? DraftBannerPolicy(store: .appDefault).shouldShow(for: collection)) ?? false
+    /// 눌렀는데 아무것도 없으면 사용자는 작업물이 사라졌다고 읽는다. 다음 진입에
+    /// 다시 시도한다.
+    private func refreshDraftBanner() async {
+        let store = DraftStore.appDefault
+        let collectionID = collection.id.uuidString
+        hasDraft = await Task.detached {
+            (try? store.draft(forCollection: collectionID)) .flatMap { $0 } != nil
+        }.value
     }
 }
 

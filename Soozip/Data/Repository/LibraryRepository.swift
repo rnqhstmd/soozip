@@ -74,10 +74,21 @@ struct LibraryRepository {
     ///
     /// 길이 검증이 `createCollection`과 **같은 함수**를 쓴다. 두 경로가 각자 검증하면
     /// 한쪽만 느슨해졌을 때 그 경로가 우회로가 된다.
+    ///
+    /// 저장이 실패하면 **이름을 되돌린다.** 모델 객체는 이미 새 이름을 들고 있고
+    /// `@Query`가 그걸 바로 화면에 밀어, 되돌리지 않으면 목록에는 새 이름이 보이는데
+    /// 시트는 "저장하지 못했습니다"를 말하는 상태가 된다.
     func renameCollection(_ collection: Collection, to name: String) throws {
         try validate(collectionName: name)
+
+        let previous = collection.name
         collection.name = name
-        try context.save()
+        do {
+            try context.save()
+        } catch {
+            collection.name = previous
+            throw error
+        }
     }
 
     /// 보이는 순서 그대로 받아 `sortIndex`를 0..n-1로 다시 매긴다.
@@ -203,6 +214,21 @@ struct LibraryRepository {
         case .oldestFirst: return oldestFirst
         case .newestFirst: return oldestFirst.reversed()
         }
+    }
+
+    /// 전 캔버스를 소속별로 나눈 것. **읽기 전용이다.**
+    ///
+    /// 모음집 목록을 그릴 때 쓴다 — 모음집마다 `canvases(in:)`를 부르면 그때마다
+    /// 전량 fetch가 돌아 모음집 수만큼 곱해진다. 어차피 한 번은 전량을 읽어야
+    /// 하므로 한 번 읽고 나누는 편이 언제나 싸다.
+    func canvasesByCollection() -> [UUID: [Canvas]] {
+        let all = (try? context.fetch(FetchDescriptor<Canvas>())) ?? []
+        var grouped: [UUID: [Canvas]] = [:]
+        for canvas in all {
+            guard let owner = canvas.collection?.id else { continue }
+            grouped[owner, default: []].append(canvas)
+        }
+        return grouped
     }
 
     /// 표지 캔버스. **읽기 전용이다** — 저장된 식별자가 유령이어도 고쳐 쓰지 않고

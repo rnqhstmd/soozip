@@ -18,6 +18,7 @@ struct CollectionHomeView: View {
     @State private var renaming: Collection?
     @State private var deleting: Collection?
     @State private var showingAll = false
+    @State private var failure: String?
 
     private var presenter: CollectionPresenter { .app(context: context) }
     private var repository: LibraryRepository { LibraryRepository(context: context) }
@@ -33,20 +34,39 @@ struct CollectionHomeView: View {
                 if !collections.isEmpty { allCollectionsLink }
             }
             .navigationTitle("모음집")
-            .toolbar { debugToolbar }
+            .spikeMenuToolbar()
             .sheet(isPresented: $creating) { createSheet }
             .sheet(item: $renaming) { renameSheet(for: $0) }
             .navigationDestination(isPresented: $showingAll) {
                 CollectionGridView()
             }
             .confirmationDialog(deletionTitle,
-                                isPresented: .constant(deleting != nil),
+                                isPresented: deletionDialogBinding,
                                 titleVisibility: .visible) {
                 deletionActions
             } message: {
                 if let message = deletionPrompt?.message { Text(message) }
             }
+            .alert("변경하지 못했습니다", isPresented: failureAlertBinding) {
+                Button("확인", role: .cancel) { failure = nil }
+            } message: {
+                if let failure { Text(failure) }
+            }
         }
+    }
+
+    /// **`.constant`를 쓰지 않는다.** 상수 바인딩은 SwiftUI가 닫을 때 쓰는
+    /// `false`를 삼켜, 두 버튼을 거치지 않는 모든 닫기 경로(VoiceOver 이스케이프,
+    /// 하드웨어 Esc, 시스템 강제 해제)에서 `deleting`이 남는다. 그러면 다음 본문
+    /// 평가에서 같은 다이얼로그가 다시 떠 **사용자가 빠져나올 수 없다.**
+    private var deletionDialogBinding: Binding<Bool> {
+        Binding(get: { deleting != nil },
+                set: { if !$0 { deleting = nil } })
+    }
+
+    private var failureAlertBinding: Binding<Bool> {
+        Binding(get: { failure != nil },
+                set: { if !$0 { failure = nil } })
     }
 
     // MARK: - 캐러셀
@@ -122,6 +142,12 @@ struct CollectionHomeView: View {
             // 생성 즉시 상세로 진입하는 것이 v4 §4의 규칙이지만, 그 이동은
             // Phase 3의 에디터 진입과 함께 다룬다 — 지금은 캐러셀에 추가만 한다.
             try repository.createCollection(name: name, now: Date())
+
+            // **모음집을 만든 것도 힌트를 본 것이다.** 탭해서 닫을 때만 기록하면,
+            // 힌트를 무시하고 [+]를 누른 사용자는 `hasDismissed`가 false로 남아
+            // 나중에 모음집을 전부 지웠을 때 힌트가 되살아난다 — `GhostHintPolicy`
+            // 주석이 금지한 바로 그 동작이다. 정책은 맞았고 배선이 빠져 있었다.
+            ghostHintDismissed = true
         }
     }
 
@@ -144,20 +170,15 @@ struct CollectionHomeView: View {
     @ViewBuilder
     private var deletionActions: some View {
         Button("삭제", role: .destructive) {
-            if let target = deleting { try? repository.deleteCollection(target) }
+            if let target = deleting {
+                do { try repository.deleteCollection(target) }
+                catch { failure = "삭제하지 못했습니다." }
+            }
             deleting = nil
         }
         Button("취소", role: .cancel) { deleting = nil }
     }
 
-    // MARK: - 스파이크 진입점
-
-    @ToolbarContentBuilder
-    private var debugToolbar: some ToolbarContent {
-        #if DEBUG
-        ToolbarItem(placement: .topBarTrailing) { SpikeMenu() }
-        #endif
-    }
 }
 
 /// 「전체 보기」 — 캐러셀이 길어졌을 때의 탈출구이자 **순서 재배치의 자리**다.
@@ -173,6 +194,8 @@ struct CollectionGridView: View {
     @Query(sort: [SortDescriptor(\Collection.sortIndex, order: .forward),
                   SortDescriptor(\Collection.createdAt, order: .forward)])
     private var collections: [Collection]
+
+    @State private var failure: String?
 
     private var presenter: CollectionPresenter { .app(context: context) }
 
@@ -195,12 +218,26 @@ struct CollectionGridView: View {
         }
         .navigationTitle("전체 보기")
         .toolbar { EditButton() }
+        .alert("순서를 저장하지 못했습니다", isPresented: Binding(
+            get: { failure != nil }, set: { if !$0 { failure = nil } })) {
+            Button("확인", role: .cancel) { failure = nil }
+        } message: {
+            if let failure { Text(failure) }
+        }
     }
 
     /// 보이는 순서를 그대로 넘긴다. `sortIndex` 재계산은 리포지토리 몫이다.
+    ///
+    /// 실패를 삼키지 않는 이유: `List`는 이미 행을 옮겨 놓았는데 `sortIndex`는
+    /// 그대로라, 다음 `@Query` 갱신에 **아무 설명 없이 순서가 되돌아간다.**
+    /// 사용자는 앱이 고장 났다고 읽는다.
     private func move(from source: IndexSet, to destination: Int) {
         var ordered = collections
         ordered.move(fromOffsets: source, toOffset: destination)
-        try? LibraryRepository(context: context).reorderCollections(ordered)
+        do {
+            try LibraryRepository(context: context).reorderCollections(ordered)
+        } catch {
+            failure = "다시 시도해주세요. 목록은 저장된 순서로 되돌아갑니다."
+        }
     }
 }

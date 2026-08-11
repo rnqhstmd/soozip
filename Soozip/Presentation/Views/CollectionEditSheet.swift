@@ -63,7 +63,10 @@ struct CollectionEditSheet: View {
 
     private func submit() {
         do {
-            try onSubmit(name)
+            // **여기서 다듬는다.** 리포지토리는 길이만 보므로 "   "가 3자로 통과해,
+            // 카드 이름이 빈칸으로 그려지는 모음집이 만들어진다. 설계가 트리밍을
+            // "Phase 6 UI 몫"으로 미뤄 뒀고 여기가 그 자리다.
+            try onSubmit(name.trimmingCharacters(in: .whitespacesAndNewlines))
             dismiss()
         } catch let error as RepositoryError {
             errorMessage = Self.message(for: error)

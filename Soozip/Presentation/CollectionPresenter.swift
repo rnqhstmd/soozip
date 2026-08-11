@@ -71,8 +71,15 @@ struct CollectionPresenter {
     /// **뷰가 쓰는 입구다.** 화면은 `@Query`로 목록을 받으므로 여기서 다시 fetch하면
     /// 두 출처가 생긴다 — 위의 `cards()`는 이 함수에 위임만 하므로 테스트가 덮은
     /// 경로와 화면이 도는 경로가 같은 코드다.
+    ///
+    /// **캔버스를 한 번만 읽고 소속별로 나눈다.** 모음집마다 `card(for:)`를 부르면
+    /// 그때마다 `Canvas` 전량 fetch가 돌아, 모음집 20개면 본문 한 번 평가에 전량
+    /// 조회가 20번 일어난다. 이건 앱 첫 화면이라 그 비용이 그대로 체감된다.
     func cards(for collections: [Collection]) -> [CollectionCard] {
-        collections.map(card(for:))
+        let grouped = library.canvasesByCollection()
+        return collections.map { collection in
+            card(for: collection, canvases: grouped[collection.id] ?? [])
+        }
     }
 
     func carouselItems(for collections: [Collection]) -> [CarouselItem] {
@@ -83,8 +90,12 @@ struct CollectionPresenter {
     /// 목록이 잠시 비어 보이는 것은 화면이 감당할 수 있고, 여기서 던지면
     /// `@Query`가 도는 화면마다 오류 처리가 번진다.
     func card(for collection: Collection) -> CollectionCard {
-        let canvases = library.canvases(in: collection)
-        return CollectionCard(
+        card(for: collection, canvases: library.canvases(in: collection))
+    }
+
+    /// 후보를 이미 아는 경우. 목록 경로가 캔버스를 한 번만 읽고 나눠 쓰기 위한 입구다.
+    private func card(for collection: Collection, canvases: [Canvas]) -> CollectionCard {
+        CollectionCard(
             id: collection.id,
             name: collection.name,
             canvasCount: canvases.count,
