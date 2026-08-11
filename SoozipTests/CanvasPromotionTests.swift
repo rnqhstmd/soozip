@@ -365,6 +365,93 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
     }
 }
 
+// MARK: - CANVAS-3: 사진의 소유 관계
+
+// **여기 위의 사진 테스트들은 전부 전역 조회다** — `fetch(FetchDescriptor<CanvasPhoto>())`.
+// 바이트가 다 있고 개수가 맞아도 **어느 사진이 어느 캔버스 것인지는 안 잰다.**
+//
+// `LibraryRepositoryTests`의 cascade 테스트들도 못 잡는다. 그쪽은 `photo.canvas`를
+// **테스트가 직접 걸고** 삭제를 재므로, 승격 경로가 그 관계를 거는지는 밖에 있다.
+//
+// 실측: `CanvasPromoter.attach`에서 `record.canvas = canvas`를 지우면 **254개가
+// 전부 초록이다.** 그동안 사진은 주인 없는 레코드가 되어 cascade가 안 닿고
+// (`externalStorage`라 파일이 계속 쌓인다), `canvas.photos`가 비어 재편집이
+// 사진을 못 찾는다.
+
+@Test @MainActor func 승격된_사진은_그_캔버스에_속한다() throws {
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let id = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
+                       document: layout(assetIDs: assets), now: anchor,
+                       photoBytes: [assets[0].uuidString: Data([0xAA]),
+                                    assets[1].uuidString: Data([0xBB])])
+
+            let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
+
+            // 전역이 아니라 **캔버스를 통해** 되짚는다.
+            let owned = try #require(canvas.photos)
+            #expect(Set(owned.map(\.data)) == [Data([0xAA]), Data([0xBB])])
+            #expect(owned.allSatisfy { $0.canvas?.id == canvas.id })
+        }
+    }
+}
+
+@Test @MainActor func 캔버스가_둘이면_각자의_사진만_갖는다() throws {
+    // 캔버스가 하나뿐이면 전역 조회와 소유 조회가 같은 답을 낸다 —
+    // **둘이어야 구분된다.**
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+
+            let 첫자산 = UUID(), 첫초안 = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: 첫초안,
+                       document: layout(assetIDs: [첫자산]), now: anchor,
+                       photoBytes: [첫자산.uuidString: Data([0xAA])])
+
+            let 둘째자산 = UUID(), 둘째초안 = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: 둘째초안,
+                       document: layout(assetIDs: [둘째자산]), now: anchor,
+                       photoBytes: [둘째자산.uuidString: Data([0xBB])])
+
+            let 첫캔버스 = try promoter(store, library).promote(canvasID: 첫초안, now: anchor)
+            let 둘째캔버스 = try promoter(store, library).promote(canvasID: 둘째초안, now: anchor)
+
+            #expect(try #require(첫캔버스.photos).map(\.data) == [Data([0xAA])])
+            #expect(try #require(둘째캔버스.photos).map(\.data) == [Data([0xBB])])
+        }
+    }
+}
+
+@Test @MainActor func 승격으로_만든_캔버스를_지우면_사진도_사라진다() throws {
+    // cascade 규칙 자체는 `LibraryRepositoryTests`가 잰다. 여기서 재는 것은
+    // **승격이 그 규칙이 닿을 관계를 실제로 거는가**다. 안 걸면 캔버스만
+    // 사라지고 `externalStorage` 블롭이 영원히 남는다.
+    try withDraftStore { store in
+        try withLibrary { library, context in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let id = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
+                       document: layout(assetIDs: assets), now: anchor,
+                       photoBytes: [assets[0].uuidString: Data([0xAA]),
+                                    assets[1].uuidString: Data([0xBB])])
+
+            let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
+            #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 2)
+
+            try library.deleteCanvas(canvas)
+
+            #expect(try context.fetchCount(FetchDescriptor<CanvasPhoto>()) == 0)
+        }
+    }
+}
+
 // MARK: - 식별자 계약
 
 @Test @MainActor func UUID가_아닌_초안_식별자는_거부된다() throws {

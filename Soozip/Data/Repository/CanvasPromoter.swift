@@ -170,6 +170,10 @@ struct CanvasPromoter {
             let record = CanvasPhoto()
             record.id = photo.id
             record.data = photo.data
+            // **소유를 여기서 건다.** 이 줄이 없으면 사진은 주인 없는 레코드가 되어
+            // cascade가 안 닿고(`externalStorage`라 파일이 계속 쌓인다),
+            // `canvas.photos`가 비어 재편집이 사진을 못 찾는다.
+            // 위쪽 `attach` 실패 시의 보상 삭제도 이 관계를 타고 사진을 치운다.
             record.canvas = canvas
             library.context.insert(record)
         }
