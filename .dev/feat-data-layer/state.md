@@ -1,4 +1,4 @@
-phase: review
+phase: complete
 status: in_progress
 pipeline: gx-tdd
 verify-status: pending
@@ -18,14 +18,14 @@ last-known-head: 4a86c4217708ee430fe5333c3d51b24e3b0b0689
 auto-stashed: false
 config-setup-attempts: 1
 warnings-baseline: 0
-current-step: "phase-review 진입 대기"
+current-step: "phase-complete — PR 생성 승인 대기"
 phases:
   setup: completed
   requirements: completed
   design: completed
   implement: completed
-  review: in_progress
-  complete: pending
+  review: completed
+  complete: in_progress
 steps:
   requirements:
     - PRD 작성: completed
@@ -50,10 +50,10 @@ steps:
   review:
     - mechanical-gate: completed (빌드 성공 / 195개 통과 / 소스 경고 0건)
     - spec-review (1단계): completed (AC 34건 전부 테스트 섹션 대응 확인 — 오케스트레이터 직접 수행)
-    - quality-review + security (2단계 병렬): pending
+    - quality-review + security (2단계 병렬): completed (오케스트레이터 직접 수행 — 사용자 선택)
   complete:
-    - verify-gate: pending
-    - 인수검증: pending
+    - verify-gate: completed (195개 3회 연속 통과 / 빌드 성공 / 소스 경고 0건)
+    - 인수검증: completed (AC 34건 대응 · 설계 신규 15파일 전부 존재 · 만들지 않기로 한 6항목 부재 확인)
 execution-log:
   - phase: setup
     result: "베이스 main (단일 후보 자동 선택), 브랜치 feat/data-layer 생성"
@@ -170,13 +170,24 @@ execution-log:
     result: "직접 검토에서 결함 1건 수정 — canvasesFetched가 try?로 fetch 실패를 삼켜, 쓰기 경로에서 후보 0장으로 보이면 CoverPolicy가 표지를 빈 문자열로 밀어버렸다. 쓰기용(throws)과 읽기용(canvasesForDisplay)을 분리해 쓰기만 전파. 테스트로 재현 불가한 자리라 추론 기반 수정"
   - phase: implement
     result: "phase-implement 종료 — RGR 9사이클 전부 완료. AC 32건 대응 구현 + 테스트 195개(패키지 90 + 앱 105). 신규 6파일·수정 3파일"
+  - phase: review
+    result: "quality-review 직접 수행 — 강제 언래핑 0 / fatalError 0 / 로그 0. try?는 읽기 전용 경로 1곳만 남기고 쓰기 경로에서 제거"
+  - phase: review
+    result: "security 감사 직접 수행 — 이 계층에 네트워크·자격증명·경로조작·역직렬화 표면 없음. layoutJSON은 저장만 하고 파싱하지 않는다(SoozipLayout 책임). 테스트는 cloudKitDatabase: .none으로 iCloud 격리"
+  - phase: review
+    finding: "[Phase 2 인계] createCanvas가 input.id 중복을 막지 않는다. 호출부가 아직 없고 @Attribute(.unique)는 CloudKit에서 못 쓴다. 초안 승격이 부분 실패 후 재시도되면 같은 id가 둘 생길 수 있어 승격 트랜잭션이 멱등성을 책임져야 한다"
+  - phase: review
+    finding: "[알려진 한계] 쓰기마다 Canvas 전량 fetch + 인메모리 필터. #Predicate의 옵셔널 관계 경유가 iOS 17에서 불안정해 설계가 의도적으로 택한 쪽. Phase 1 규모에서는 무해하나 캔버스가 수천 장이 되면 재검토 대상"
+  - phase: review
+    finding: "[Phase 0 잔재] S1/S2 프로브가 앱 타깃에 남아 있고 앱 루트가 S1_GestureProbe다. 정식 화면은 Phase 3~6 몫이라 의도된 상태. T9에서 프로브 컨테이너를 분리해 정식 스키마 오염은 차단됨"
+  - phase: complete
+    gate: verify
+    result: "PASS — 195개(패키지 90 + 앱 105) 3회 연속 통과로 병렬 실행 안정성 확인. 빌드 성공, 소스 경고 0건(기준선 0 유지)"
+  - phase: complete
+    result: "인수검증 PASS — AC 34건 전부 테스트 대응, 설계 신규 15파일 전부 존재, '만들지 않기로 한' 6항목(purge·addPhoto·collection(id:)·collectionNotFound·ICloudAccountStatusProviding·rename/reorder) 부재 확인. main 대비 32파일 +3339/-28"
 next-task:
-  id: phase-review
-  step: mechanical-gate
-  scope: "기계 게이트(빌드·테스트·경고) → spec-review(AC 충족) → quality-review + security(병렬)"
-  spec: "Iron Law — spec-review 통과 전에는 quality-review를 돌리지 않는다"
-  baseline: "빌드 성공 / 테스트 195개 통과 / 소스 경고 0건 (기준선 0 유지)"
-  notes: "사용자가 T3부터 에이전트 디스패치를 거부했다. 리뷰 단계 진행 방식(직접 수행 vs 에이전트 디스패치)을 사용자에게 확인할 것"
-  after-review: "phase-complete (verify 게이트 → 인수검증 → PR)"
-  verify-command: "./scripts/test.sh  # 현재 195개 통과 (패키지 90 + 앱 105)"
-  xcodegen: "파일을 추가하면 반드시 `xcodegen generate` — project.yml이 원본이라 재생성 없이는 xcodebuild가 새 파일을 못 본다"
+  id: PR
+  step: 사용자 승인 대기
+  scope: "feat/data-layer -> main PR 생성"
+  blocked-on: "PR 생성은 외부 공개 동작이라 사용자 승인 필요"
+  verify-command: "./scripts/test.sh  # 195개 통과 (패키지 90 + 앱 105)"
