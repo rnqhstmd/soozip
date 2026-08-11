@@ -40,9 +40,12 @@ execution-log:
   - phase: implement
     gate: 변이 검증 9종
     result: "8종 잡힘. A(안정 정렬 2차 키)는 stdlib이 이미 안정적이라 행위로 관찰 불가 — 원장에 기록"
+  - phase: review
+    agent: code-reviewer (general-purpose)
+    result: "생존 변이 3종(J·K·L) + AC-8 항등식 + entries 낡은 z. 전부 유효 — 재현 후 수정, 재검 생존 0"
   - phase: complete
     gate: verify
-    result: "패키지 129 + 앱 169 = 298 통과, Release 빌드 성공"
+    result: "패키지 133 + 앱 169 = 302 통과, Release 빌드 성공"
 ---
 
 # EDITOR-2 — 레이어 스토어
@@ -58,9 +61,9 @@ execution-log:
 
 ## 결과
 
-- `SoozipLayout` 40 → **53**, 전체 285 → **298**
+- `SoozipLayout` 40 → **57**, 전체 285 → **302**
 - `Layer.transform`에 setter 추가 (v4 §5.2의 "5종 동일 경로"를 코드로)
-- 변이 9종 중 8종 잡힘
+- 변이 14종 중 13종 잡힘 (생존 1종은 stdlib이 이미 만족해 관찰 불가)
 
 ## 다음
 

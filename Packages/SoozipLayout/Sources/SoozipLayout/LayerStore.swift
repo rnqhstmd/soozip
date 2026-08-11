@@ -32,7 +32,25 @@ public struct LayerStore: Equatable, Sendable {
     }
 
     /// 뒤에서 앞 순서. **인덱스가 곧 z다.**
-    public private(set) var entries: [Entry]
+    ///
+    /// 저장된 레이어의 `transform.z`는 **의미가 없다** — 0으로 눕혀 둔다. z는
+    /// 읽을 때 인덱스에서 채운다(`entries`·`layers`). 저장해 두면 조작마다
+    /// 갱신해야 하고, 빠뜨리면 저장값과 인덱스가 어긋난다. 값이 없으면
+    /// 어긋날 수도 없고, `Equatable`도 순서만 보게 되어 정의가 분명해진다.
+    private var storage: [Entry]
+
+    /// 뒤에서 앞 순서. **`z`가 인덱스로 채워져 나간다.**
+    ///
+    /// `layers`와 같은 규칙을 쓴다 — 한쪽만 채우면 `EDITOR-4`가 선택 대상을
+    /// 고를 때(v4 §5.11 "같은 지점을 탭하면 z-order 최상단") 낡은 z를 보고
+    /// **맨 아래 레이어를 최상단으로 고른다.**
+    public var entries: [Entry] {
+        storage.enumerated().map { index, entry in
+            var filled = entry
+            filled.layer.transform.z = index
+            return filled
+        }
+    }
 
     /// 문서에서 불러온다. z 오름차순으로 정렬해 담는다.
     public init(_ layers: [Layer]) {
@@ -40,38 +58,41 @@ public struct LayerStore: Equatable, Sendable {
         // 않아서, z가 같은 레이어들의 순서가 실행마다 달라질 수 있다 — 같은
         // 파일이 열 때마다 다르게 보인다. 원래 인덱스를 2차 키로 쓴다
         // (`LibraryRepository.canvases(in:)`가 같은 이유로 `id`를 2차 키로 쓴다).
-        entries = layers.enumerated()
+        storage = layers.enumerated()
             .sorted { ($0.element.transform.z, $0.offset) < ($1.element.transform.z, $1.offset) }
-            .map { Entry(layer: $0.element) }
+            .map { pair in
+                var layer = pair.element
+                layer.transform.z = 0        // 저장값은 의미 없음 — 위 주석 참조
+                return Entry(layer: layer)
+            }
     }
 
     /// 저장·렌더용 레이어 목록. **z가 인덱스로 채워져 나간다.**
-    public var layers: [Layer] {
-        entries.enumerated().map { index, entry in
-            var layer = entry.layer
-            layer.transform.z = index
-            return layer
-        }
-    }
+    public var layers: [Layer] { entries.map(\.layer) }
 
     // MARK: - 삽입·삭제
 
-    /// 새 레이어를 **맨 앞**에 놓는다.
+    /// 새 레이어를 **맨 앞**에 놓고 그 식별자를 돌려준다.
+    ///
+    /// 반환값은 버리는 값이 아니다 — `TOOL-3`(복제)이 v4 §5.12.1의 "복제본이
+    /// 선택 상태가 된다"를 구현하려면 이 값을 선택에 넣어야 한다.
     @discardableResult
     public mutating func insert(_ layer: Layer) -> UUID {
-        let entry = Entry(layer: layer)
-        entries.append(entry)
+        var stored = layer
+        stored.transform.z = 0
+        let entry = Entry(layer: stored)
+        storage.append(entry)
         return entry.id
     }
 
     public mutating func remove(_ id: UUID) {
-        entries.removeAll { $0.id == id }
+        storage.removeAll { $0.id == id }
     }
 
     // MARK: - z-order (v4 §5.11)
 
     public mutating func bringToFront(_ id: UUID) {
-        // `entries.count`를 클로저 안에서 읽으면 `move`의 배타 접근과 겹친다.
+        // `storage.count`를 클로저 안에서 읽으면 `move`의 배타 접근과 겹친다.
         // 개수는 `move`가 인자로 넘겨준다.
         move(id) { _, count in count - 1 }
     }
@@ -93,10 +114,13 @@ public struct LayerStore: Equatable, Sendable {
     /// **없는 식별자는 조용히 무시한다.** 선택된 레이어가 다른 경로로 지워진
     /// 뒤에 속성바 버튼이 눌리는 경합이 실제로 있고, 그때 크래시할 이유가 없다.
     private mutating func move(_ id: UUID, to destination: (Int, Int) -> Int) {
-        guard let from = entries.firstIndex(where: { $0.id == id }) else { return }
-        let to = destination(from, entries.count)
+        // **식별자로 찾는다.** 레이어 값으로 찾으면 복제본(모든 속성을 승계하고
+        // `assetId`까지 공유한다 — v4 §5.12.1)이 원본과 구별되지 않아, 복제본을
+        // 앞으로 보내면 원본이 움직인다.
+        guard let from = storage.firstIndex(where: { $0.id == id }) else { return }
+        let to = destination(from, storage.count)
         guard to != from else { return }
-        let entry = entries.remove(at: from)
-        entries.insert(entry, at: to)
+        let entry = storage.remove(at: from)
+        storage.insert(entry, at: to)
     }
 }
