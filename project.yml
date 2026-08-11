@@ -86,6 +86,7 @@ targets:
       - target: Soozip
       - package: SoozipGeometry
       - package: SoozipLayout
+      - package: SoozipDraft
     settings:
       base:
         SWIFT_VERSION: "6.0"
