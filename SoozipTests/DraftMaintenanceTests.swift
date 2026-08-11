@@ -132,9 +132,6 @@ private struct 조회실패: Error {}
 // MARK: - 리포지토리 연결 — 식별자 표기가 어긋나면 전부 고아가 된다
 
 @Test @MainActor func 리포지토리에서_받은_모음집_식별자로_초안이_보존된다() throws {
-    // `UUID.uuidString`은 대문자를 내는데 `UUID(uuidString:)`은 소문자도 받는다.
-    // Set 비교는 대소문자를 구분하므로, 초안의 collectionID와 리포지토리가 내는
-    // 표기가 어긋나면 **살아있는 모음집의 초안이 전부 고아로 판정된다.**
     try withDraftStore { store in
         try withLibrary { library, _ in
             let anchor = try testAnchor()
@@ -148,5 +145,49 @@ private struct 조회실패: Error {}
             #expect(removed.isEmpty)
             #expect(try store.load(canvasID: 초안) != nil)
         }
+    }
+}
+
+@Test @MainActor func 소문자로_기록된_소속_식별자도_같은_모음집으로_인식된다() throws {
+    // `UUID.uuidString`은 대문자를 내지만 `UUID(uuidString:)`은 소문자도 받는다.
+    // JSON·URL·`description`을 거치면 소문자가 되기 쉬운데, `Set.contains`는
+    // 대소문자를 구분한다. 정규화하지 않으면 **살아있는 모음집의 초안이 전부
+    // 고아로 판정되어 삭제된다.**
+    //
+    // 앞의 테스트는 양쪽을 같은 `uuidString` 식으로 만들어 이 위험을 재지 못한다 —
+    // 어떤 케이싱 규칙에서도 통과하기 때문이다. 표기를 일부러 어긋뜨려야 잡힌다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let 모음집 = try library.createCollection(name: "여행", now: anchor)
+            let 초안 = try 초안생성(store,
+                                 collectionID: 모음집.id.uuidString.lowercased(),
+                                 updatedAt: anchor)
+
+            let maintenance = DraftMaintenance(store: store, library: library)
+            let removed = try maintenance.pruneOrphanedDrafts(now: anchor)
+
+            #expect(removed.isEmpty)
+            #expect(try store.load(canvasID: 초안) != nil)
+        }
+    }
+}
+
+// MARK: - 방치 기간 경계는 정확히 7일이다
+
+@Test @MainActor func 마지막_수정_후_정확히_이레_지난_초안은_남는다() throws {
+    // -8일/-6일만 재면 `>`와 `>=`가 구분되지 않는다. 경계 정확값이 어느 쪽에
+    // 속하는지 고정해 두지 않으면 비교 연산자를 뒤집는 리팩터가 조용히 지나간다.
+    try withDraftStore { store in
+        let anchor = try testAnchor()
+        let 모음집 = UUID().uuidString
+        let 경계것 = try 초안생성(store, collectionID: 모음집,
+                              updatedAt: anchor.addingTimeInterval(-DraftMaintenance.defaultMaxAge))
+
+        let maintenance = DraftMaintenance(store: store, knownCollectionIDs: { [모음집] })
+        let removed = try maintenance.pruneOrphanedDrafts(now: anchor)
+
+        #expect(removed.isEmpty)
+        #expect(try store.load(canvasID: 경계것) != nil)
     }
 }

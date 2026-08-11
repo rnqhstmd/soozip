@@ -35,10 +35,23 @@ extension DraftStore {
 
 private struct PruneOrphanedDraftsOnLaunch: ViewModifier {
 
+    /// 프로세스당 1회를 보장하는 빗장.
+    ///
+    /// **`.task`만으로는 "앱 시작 시 1회"가 아니다.** 뷰가 다시 나타나거나 씬이
+    /// 재연결되면 다시 돈다. 정리는 파일을 지우는 동작이고, `DraftStore.create`는
+    /// 폴더를 만든 뒤 `meta.json`을 쓰기까지 틈이 있다 — 그 틈에 정리가 끼어들면
+    /// 메타를 못 읽어 **사용자가 지금 만들고 있는 초안을 고아로 보고 지운다.**
+    /// 지금은 루트가 정적 프로브라 우연히 1회지만, Phase 3이 실제 화면을 끼우면
+    /// 재진입이 열린다.
+    @MainActor private static var hasRun = false
+
     @Environment(\.modelContext) private var context
 
     func body(content: Content) -> some View {
         content.task {
+            guard !Self.hasRun else { return }
+            Self.hasRun = true
+
             let maintenance = DraftMaintenance(
                 store: .appDefault,
                 library: LibraryRepository(context: context))

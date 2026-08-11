@@ -47,6 +47,14 @@ struct DraftMaintenance {
     /// **소속 조회가 실패하면 던진다.** 삼키고 빈 집합으로 진행하지 않는다 —
     /// 조회 실패와 "모음집이 정말 0개"는 결과가 정반대여야 한다. 전자는 아무것도
     /// 지우면 안 되고, 후자는 초안이 실제로 고아다(초안은 소속 없이 존재할 수 없다).
+    ///
+    /// - Important: **CloudKit을 켜기 전에 이 메서드를 고쳐야 한다.** 위 방어는
+    ///   조회가 *던질 때만* 작동하는데, CloudKit 미러링에서는 `fetch`가 에러 없이
+    ///   **부분 결과**를 돌려준다. 계정 변경 후 재임포트가 도는 동안 아직 안 들어온
+    ///   모음집의 초안이 소속 상실로 판정되어 지워진다 — 초안은 로컬 전용이라
+    ///   그 순간에도 살아 있기 때문이다. import 완료를 확인한 뒤 판정하거나,
+    ///   런치 시에는 `maxAge` 기준만 적용해야 한다.
+    ///   상세와 차단 조건: `.dev/feat-draft-pruning/trust-ledger.md`
     @discardableResult
     func pruneOrphanedDrafts(now: Date,
                              maxAge: TimeInterval = DraftMaintenance.defaultMaxAge)
