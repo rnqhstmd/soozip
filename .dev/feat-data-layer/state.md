@@ -48,8 +48,8 @@ steps:
     - "RGR T9 앱 배선": completed (test-count: 195)
     - 변경사항 수집: completed
   review:
-    - mechanical-gate: pending
-    - spec-review (1단계): pending
+    - mechanical-gate: completed (빌드 성공 / 195개 통과 / 소스 경고 0건)
+    - spec-review (1단계): completed (AC 34건 전부 테스트 섹션 대응 확인 — 오케스트레이터 직접 수행)
     - quality-review + security (2단계 병렬): pending
   complete:
     - verify-gate: pending
@@ -162,6 +162,12 @@ execution-log:
     decision: "largestCollection에서 모음집이 전부 비었을 때 = 0장끼리 동률로 보고 BR-8 적용(먼저 만든 쪽 반환). nil은 '모음집이 하나도 없다'는 뜻으로만 남긴다. PRD 무규정 자리라 테스트로 고정"
   - phase: implement
     result: "T9 완료 — 앱 컨테이너를 SoozipSchema.models로 교체, 프로브 전용 컨테이너를 S2 뷰 내부로 분리. 스키마 SSOT 테스트 1개 추가로 195개 통과(앱 105). 빌드 성공, 소스 경고 0건"
+  - phase: review
+    result: "mechanical-gate PASS — 빌드 성공, 195개 통과, 소스 경고 0건(기준선 0 유지)"
+  - phase: review
+    result: "spec-review PASS — AC-1~32 + 25a·25b 전 34건이 테스트 섹션에 대응. 누락 0건"
+  - phase: review
+    result: "직접 검토에서 결함 1건 수정 — canvasesFetched가 try?로 fetch 실패를 삼켜, 쓰기 경로에서 후보 0장으로 보이면 CoverPolicy가 표지를 빈 문자열로 밀어버렸다. 쓰기용(throws)과 읽기용(canvasesForDisplay)을 분리해 쓰기만 전파. 테스트로 재현 불가한 자리라 추론 기반 수정"
   - phase: implement
     result: "phase-implement 종료 — RGR 9사이클 전부 완료. AC 32건 대응 구현 + 테스트 195개(패키지 90 + 앱 105). 신규 6파일·수정 3파일"
 next-task:

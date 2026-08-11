@@ -164,7 +164,7 @@ struct LibraryRepository {
         // 2차 키가 `id`인 이유는 `CoverPolicy.resolve`와 같다 — 기록 날짜가 같은
         // 캔버스가 둘이면 순서가 배열 순서에 의존하는데 SwiftData의 to-many 순서는
         // 보장되지 않아 같은 데이터에서 목록이 실행마다 뒤집힌다.
-        let oldestFirst = canvasesFetched(in: collection).sorted {
+        let oldestFirst = canvasesForDisplay(in: collection).sorted {
             ($0.createdAt, $0.id.uuidString) < ($1.createdAt, $1.id.uuidString)
         }
         switch order {
@@ -177,7 +177,7 @@ struct LibraryRepository {
     /// 폴백 결과만 돌려준다(AC-18, FR-11). 조회가 슬쩍 쓰면 `@Query`가 도는
     /// 화면에서 스크롤만 해도 쓰기가 발생한다.
     func coverCanvas(of collection: Collection) -> Canvas? {
-        CoverPolicy.resolve(in: canvasesFetched(in: collection),
+        CoverPolicy.resolve(in: canvasesForDisplay(in: collection),
                             coverID: collection.coverCanvasID)
     }
 
@@ -205,15 +205,20 @@ struct LibraryRepository {
 
         var done: Set<UUID> = []
         for collection in collections.compactMap({ $0 }) where done.insert(collection.id).inserted {
-            reconcileCover(of: collection)
+            try reconcileCover(of: collection)
         }
         try context.save()
     }
 
     /// 표지 재계산. 후보 목록을 만들어 `CoverPolicy`에 넘기는 것이 전부다 —
     /// 판정 자체는 순수 함수 한 곳에만 있다.
-    private func reconcileCover(of collection: Collection) {
-        CoverPolicy.reconcile(collection, candidates: canvasesFetched(in: collection))
+    ///
+    /// **여기서 fetch 실패를 삼키면 안 된다.** 후보 0장은 "캔버스가 없다"는 뜻이고
+    /// `CoverPolicy.reconcile`은 그걸 보고 표지를 빈 문자열로 만든다(BR-4).
+    /// 조회가 실패했을 뿐인데 표지가 지워지는 것 — 던져서 호출부가 쓰기를
+    /// 통째로 포기하게 두는 편이 낫다.
+    private func reconcileCover(of collection: Collection) throws {
+        CoverPolicy.reconcile(collection, candidates: try canvasesFetched(in: collection))
     }
 
     /// 후보 목록의 유일한 출처.
@@ -225,10 +230,17 @@ struct LibraryRepository {
     ///
     /// `#Predicate`로 옵셔널 관계를 경유해 비교하는 것은 iOS 17에서 불안정하다는
     /// 보고가 있어 피한다.
-    private func canvasesFetched(in collection: Collection) -> [Canvas] {
+    private func canvasesFetched(in collection: Collection) throws -> [Canvas] {
         let owner = collection.id
-        let all = (try? context.fetch(FetchDescriptor<Canvas>())) ?? []
-        return all.filter { $0.collection?.id == owner }
+        return try context.fetch(FetchDescriptor<Canvas>())
+            .filter { $0.collection?.id == owner }
+    }
+
+    /// 읽기 전용 경로용. **여기서는 실패를 빈 목록으로 접는다** — 목록이 잠시
+    /// 비어 보이는 것은 화면이 감당할 수 있고, 읽기가 던지면 `@Query`가 도는
+    /// 화면마다 오류 처리가 번진다. 쓰기 경로가 이 함수를 쓰지 않는 것이 요점이다.
+    private func canvasesForDisplay(in collection: Collection) -> [Canvas] {
+        (try? canvasesFetched(in: collection)) ?? []
     }
 
     /// 다음 `sortIndex`. 첫 모음집은 0이다.
