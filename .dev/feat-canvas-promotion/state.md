@@ -2,7 +2,7 @@ phase: complete
 status: in_progress
 pipeline: gx-tdd
 verify-status: passed
-verify-fingerprint: "16f9901:ef7d180d6747"
+verify-fingerprint: "c2de747:413f068b9724"
 model-profile: standard
 mode: core
 intent-source: user-selection
@@ -15,7 +15,7 @@ args: "CANVAS-1·2 승격 트랜잭션"
 flags: ""
 started: 2026-08-11T11:00:00
 warnings-baseline: 0
-current-step: "코드 리뷰 대기"
+current-step: "PR 생성"
 phases:
   setup: completed
   requirements: completed
@@ -51,6 +51,10 @@ execution-log:
   - phase: complete
     gate: verify
     result: "PASS — 250개 통과(패키지 92 + 앱 158), Debug·Release 빌드 성공, 소스 경고 0건"
+  - phase: review
+    result: "/code-review high — 7건(HIGH 1 / MEDIUM 3 / LOW 3). 전부 유효, 전부 수정. 262개 통과"
+  - phase: review
+    finding: "[HIGH] attach가 assetID를 버려 레이어↔사진 연결이 끊겼다. Set 비교 테스트라 구조적으로 못 잡던 자리 — 연결을 끊고 돌려 새 테스트만 빨개지는 것을 실측 확인"
 next-task:
   id: 코드 리뷰 반영 → PR
   verify-command: "./scripts/test.sh  # 250개"

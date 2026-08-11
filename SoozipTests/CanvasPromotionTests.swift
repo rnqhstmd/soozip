@@ -22,21 +22,26 @@ private func 자리(_ i: Int) -> LayerTransform {
     LayerTransform(x: 100 + Double(i) * 10, y: 100, z: i)
 }
 
+/// `assetId`는 **반드시 UUID 문자열**이다 — `CanvasPhoto.id`가 그 값을 그대로
+/// 받기 때문이다(선언부 계약). 문자열이 자유로우면 승격이 연결을 못 만든다.
 @MainActor
-private func layout(photos: Int = 0, texts: Int = 0,
-                    sharedAssetID: String? = nil) -> LayoutDocument {
+private func layout(assetIDs: [UUID] = [], texts: Int = 0) -> LayoutDocument {
     var layers: [Layer] = []
-    for i in 0..<photos {
-        layers.append(.photo(PhotoLayer(assetId: sharedAssetID ?? "asset-\(i)",
+    for (i, assetID) in assetIDs.enumerated() {
+        layers.append(.photo(PhotoLayer(assetId: assetID.uuidString,
                                         transform: 자리(i), filter: nil)))
     }
     for i in 0..<texts {
         layers.append(.text(TextLayer(string: "텍스트 \(i)", font: .pretendard,
                                       size: 48, color: "#000000", align: .left,
-                                      transform: 자리(photos + i))))
+                                      transform: 자리(assetIDs.count + i))))
     }
     return LayoutDocument(aspect: .post, layers: layers)
 }
+
+/// 사진 n장을 서로 다른 `assetId`로.
+@MainActor
+private func 사진들(_ n: Int) -> [UUID] { (0..<n).map { _ in UUID() } }
 
 /// 초안 하나를 만들고 사진 원본까지 써 둔다.
 @MainActor
@@ -67,10 +72,12 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
         try withLibrary { library, context in
             let anchor = try testAnchor()
             let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 2, texts: 1), now: anchor,
-                       photoBytes: ["asset-0": Data([1]), "asset-1": Data([2])])
+                       document: layout(assetIDs: assets, texts: 1), now: anchor,
+                       photoBytes: [assets[0].uuidString: Data([1]),
+                                    assets[1].uuidString: Data([2])])
 
             let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
 
@@ -121,10 +128,11 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
         try withLibrary { library, _ in
             let anchor = try testAnchor()
             let a = try library.createCollection(name: "여행", now: anchor)
+            let asset = UUID()
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 1, texts: 2), now: anchor,
-                       photoBytes: ["asset-0": Data([9])])
+                       document: layout(assetIDs: [asset], texts: 2), now: anchor,
+                       photoBytes: [asset.uuidString: Data([9])])
             let 초안레이아웃 = try store.readLayout(canvasID: id)
 
             let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
@@ -160,10 +168,12 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
         try withLibrary { library, context in
             let anchor = try testAnchor()
             let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 2), now: anchor,
-                       photoBytes: ["asset-0": Data([0xAA]), "asset-1": Data([0xBB])])
+                       document: layout(assetIDs: assets), now: anchor,
+                       photoBytes: [assets[0].uuidString: Data([0xAA]),
+                                    assets[1].uuidString: Data([0xBB])])
 
             try promoter(store, library).promote(canvasID: id, now: anchor)
 
@@ -181,10 +191,11 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
         try withLibrary { library, context in
             let anchor = try testAnchor()
             let a = try library.createCollection(name: "여행", now: anchor)
+            let 공유 = UUID()
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 4, sharedAssetID: "공유"), now: anchor,
-                       photoBytes: ["공유": Data([0xCC])])
+                       document: layout(assetIDs: Array(repeating: 공유, count: 4)), now: anchor,
+                       photoBytes: [공유.uuidString: Data([0xCC])])
 
             try promoter(store, library).promote(canvasID: id, now: anchor)
 
@@ -202,7 +213,7 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             let a = try library.createCollection(name: "여행", now: anchor)
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 9), now: anchor)
+                       document: layout(assetIDs: 사진들(9)), now: anchor)
 
             #expect(throws: PromotionError.layoutInvalid(
                 .photoLimitExceeded(count: 9, limit: 8))) {
@@ -220,7 +231,7 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             let a = try library.createCollection(name: "여행", now: anchor)
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 9), now: anchor)
+                       document: layout(assetIDs: 사진들(9)), now: anchor)
 
             _ = try? promoter(store, library).promote(canvasID: id, now: anchor)
 
@@ -259,7 +270,7 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             let a = try library.createCollection(name: "여행", now: anchor)
             let id = UUID().uuidString
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
-                       document: layout(photos: 1), now: anchor)   // photoBytes 없음
+                       document: layout(assetIDs: 사진들(1)), now: anchor)   // photoBytes 없음
 
             #expect(throws: (any Error).self) {
                 try promoter(store, library).promote(canvasID: id, now: anchor)
@@ -279,11 +290,14 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
         try withLibrary { library, context in
             let anchor = try testAnchor()
             let id = UUID().uuidString
-            try 초안준비(store, collectionID: UUID().uuidString, canvasID: id,
+            let 없는모음집 = UUID().uuidString
+            try 초안준비(store, collectionID: 없는모음집, canvasID: id,
                        document: layout(texts: 1), now: anchor)
 
+            // 에러가 **모음집** 식별자를 들어야 한다. 캔버스 식별자를 담으면
+            // 호출부·로그가 엉뚱한 레코드를 가리킨다.
             #expect(throws: PromotionError.collectionNotFound(
-                collectionID: id)) {
+                collectionID: 없는모음집)) {
                 try promoter(store, library).promote(canvasID: id, now: anchor)
             }
 
@@ -305,13 +319,114 @@ private func promoter(_ store: DraftStore, _ library: LibraryRepository,
             try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
                        document: layout(texts: 1), now: anchor)
 
-            // 정리 대상 폴더를 미리 지워 6단계를 실패시킨다.
-            let promoterUnderTest = promoter(store, library)
-            let canvas = try promoterUnderTest.promote(canvasID: id, now: anchor,
-                                                       cleanup: { _ in throw 주입된실패() })
+            let canvas = try promoter(store, library)
+                .promote(canvasID: id, now: anchor, cleanup: { _ in throw 주입된실패() })
 
             #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 1)
             #expect(canvas.renderedPNG == 렌더결과)
+            #expect(try store.load(canvasID: id) != nil)   // 초안은 남는다
+        }
+    }
+}
+
+// MARK: - 레이어 ↔ 사진 연결 (CanvasPhoto 선언부 계약)
+
+@Test @MainActor func 레이어의_assetId로_그_레이어의_사진을_찾을_수_있다() throws {
+    // **`CanvasPhoto` 선언부의 계약이다** — 레이어의 `assetId`가 이 `id`를 가리킨다.
+    // 새 UUID를 발급하면 `layoutJSON`의 `assetId`가 아무것도 못 가리키고,
+    // **저장된 데이터만으로는 어느 레이어가 어느 사진인지 복원할 수 없다.**
+    //
+    // 앞의 `사진_원본이_CanvasPhoto로_옮겨진다`는 집합 비교라 이걸 못 잡는다 —
+    // 바이트가 다 있어도 연결이 끊겨 있을 수 있다.
+    try withDraftStore { store in
+        try withLibrary { library, context in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let assets = 사진들(2)
+            let 바이트: [UUID: Data] = [assets[0]: Data([0xA1]), assets[1]: Data([0xB2])]
+            let id = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
+                       document: layout(assetIDs: assets), now: anchor,
+                       photoBytes: Dictionary(uniqueKeysWithValues:
+                        바이트.map { ($0.key.uuidString, $0.value) }))
+
+            let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
+
+            // 저장된 것만으로 레이어 → 사진을 되짚는다.
+            let saved = try JSONDecoder().decode(LayoutDocument.self, from: canvas.layoutJSON)
+            let photos = try context.fetch(FetchDescriptor<CanvasPhoto>())
+            for layer in saved.layers {
+                guard case .photo(let photoLayer) = layer else { continue }
+                let assetID = try #require(UUID(uuidString: photoLayer.assetId))
+                let matched = try #require(photos.first { $0.id == assetID })
+                #expect(matched.data == 바이트[assetID])
+            }
+        }
+    }
+}
+
+// MARK: - 식별자 계약
+
+@Test @MainActor func UUID가_아닌_초안_식별자는_거부된다() throws {
+    // 조용히 새 UUID를 발급하면 승격 전후로 같은 캔버스가 다른 것이 되고,
+    // 재편집이 원본을 못 찾는데 아무 신호도 없다.
+    try withDraftStore { store in
+        try withLibrary { library, context in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: "not-a-uuid",
+                       document: layout(texts: 1), now: anchor)
+
+            #expect(throws: PromotionError.malformedIdentifier("not-a-uuid")) {
+                try promoter(store, library).promote(canvasID: "not-a-uuid", now: anchor)
+            }
+            #expect(try context.fetchCount(FetchDescriptor<Canvas>()) == 0)
+            #expect(try store.load(canvasID: "not-a-uuid") != nil)
+        }
+    }
+}
+
+// MARK: - AC-4: 레이아웃이 바이트 단위로 보존된다
+
+@Test @MainActor func 저장된_레이아웃이_초안_파일과_바이트까지_같다() throws {
+    // 디코딩 후 재인코딩하면 양쪽 인코더 설정(키 순서·날짜 표기)이 갈라지는 순간
+    // 사용자가 만든 것과 다른 바이트가 저장된다. 값 비교로는 그걸 못 잡는다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let asset = UUID()
+            let id = UUID().uuidString
+            try 초안준비(store, collectionID: a.id.uuidString, canvasID: id,
+                       document: layout(assetIDs: [asset], texts: 2), now: anchor,
+                       photoBytes: [asset.uuidString: Data([9])])
+            let 초안바이트 = try store.readLayoutData(canvasID: id)
+
+            let canvas = try promoter(store, library).promote(canvasID: id, now: anchor)
+
+            #expect(canvas.layoutJSON == 초안바이트)
+        }
+    }
+}
+
+// MARK: - 실패 어휘
+
+@Test @MainActor func 레이아웃_파일이_없으면_승격_에러로_바뀐다() throws {
+    // `DraftStoreError`를 그대로 흘리면 호출부가 `PromotionError`만 보고
+    // 분기할 수 없다. 이 API의 실패 어휘는 하나여야 한다.
+    try withDraftStore { store in
+        try withLibrary { library, _ in
+            let anchor = try testAnchor()
+            let a = try library.createCollection(name: "여행", now: anchor)
+            let id = UUID().uuidString
+            // layout.json 없이 폴더와 메타만 만든다 (쓰다가 죽은 상태)
+            try store.create(canvasID: id, collectionID: a.id.uuidString,
+                             aspect: .post, now: anchor)
+
+            #expect(throws: PromotionError.layoutUnreadable(canvasID: id)) {
+                try promoter(store, library).promote(canvasID: id, now: anchor)
+            }
+            #expect(try store.load(canvasID: id) != nil)
         }
     }
 }
