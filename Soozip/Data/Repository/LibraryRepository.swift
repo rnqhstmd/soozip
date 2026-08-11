@@ -69,6 +69,15 @@ struct LibraryRepository {
         ]))
     }
 
+    /// 모음집을 지운다. 소속 캔버스와 그 사진은 `deleteRule: .cascade`가 전이로
+    /// 지운다(AC-16) — 리포지토리가 자식을 손수 훑지 않는다.
+    ///
+    /// **표지 재계산이 없다.** 모음집 자체가 사라지므로 재계산할 대상이 없다.
+    func deleteCollection(_ collection: Collection) throws {
+        context.delete(collection)
+        try context.save()
+    }
+
     // MARK: - 캔버스
 
     /// 캔버스를 만들어 `collection`에 넣는다. 소속을 **받되 변경하지 않는다**.
@@ -115,6 +124,18 @@ struct LibraryRepository {
         // 갱신 경로에서도 재계산을 부른다. "모든 변경 뒤에 재계산"에 예외를 두지
         // 않으려는 것 — 예외가 곧 빠뜨릴 자리다.
         try applyThenReconcileCover(of: canvas.collection)
+    }
+
+    /// 캔버스를 지우고 소속 모음집의 표지를 다시 계산한다(AC-8·9·10).
+    /// 사진은 `deleteRule: .cascade`가 지운다(AC-17).
+    func deleteCanvas(_ canvas: Canvas) throws {
+        // 삭제 후에도 `canvas.collection`은 non-nil로 살아 있다(실측 — `isDeleted`도
+        // false다). 그래도 먼저 잡는 이유는 삭제된 객체의 속성 접근에 의존하지
+        // 않기 위해서다.
+        let owner = canvas.collection
+
+        context.delete(canvas)
+        try applyThenReconcileCover(of: owner)
     }
 
     // MARK: - 내부
