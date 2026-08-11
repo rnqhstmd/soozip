@@ -44,7 +44,7 @@ steps:
     - "RGR T5 캔버스 생성·갱신": { red: completed, green: completed, refactor: completed, test-count: 159 }
     - "RGR T6 삭제+cascade": { red: completed, green: completed, refactor: skipped (대상 없음), test-count: 167 }
     - "RGR T7 이동+조회": { red: completed, green: completed, refactor: completed, test-count: 178 }
-    - "RGR T8 StatsRepository": pending
+    - "RGR T8 StatsRepository": { red: completed, green: completed, refactor: completed, test-count: 194 }
     - "RGR T9 앱 배선": pending
     - 변경사항 수집: pending
   review:
@@ -152,17 +152,25 @@ execution-log:
     decision: "canvases(in:order:) 정렬 2차 키를 id.uuidString으로 — AC에 없지만 CoverPolicy와 같은 근거(to-many 순서 무보장). 기록 날짜 동률 시 목록이 실행마다 뒤집히는 것을 막는다"
   - phase: implement
     result: "T7 REFACTOR — applyThenReconcileCover를 가변 인자로 통합(moveCanvas 양쪽 재계산). 순서 고정이 한 곳에만 있어 호출부가 틀릴 수 없다. 테스트 픽스처 2건 추출(유령표지_상태 / 날짜가_뒤섞인_캔버스3장)"
+  - phase: implement
+    result: "T8 완료 — StatsRepository 5종 + CollectionSummary. 16개 추가로 194개 통과(앱 104), 회귀 0건, 소스 경고 0건"
+  - phase: implement
+    result: "T8 결함 1건 실측 — DateInterval.contains는 닫힌 구간이라 end(다음 달 1일 00:00)를 포함한다. 경계 테스트가 빨개져 start <= x < end 명시 비교로 교체"
+  - phase: implement
+    result: "T8 하네스 함정 기록 — #expect(try ...)만 있고 문 수준 try가 없으면 클로저가 비throwing으로 추론된다(매크로 확장이 타입 추론보다 나중). try를 문 수준으로 올려 해결"
+  - phase: implement
+    decision: "largestCollection에서 모음집이 전부 비었을 때 = 0장끼리 동률로 보고 BR-8 적용(먼저 만든 쪽 반환). nil은 '모음집이 하나도 없다'는 뜻으로만 남긴다. PRD 무규정 자리라 테스트로 고정"
 next-task:
-  id: T8
-  step: RED
-  scope: "StatsRepository 통계 5종 (streakDays(now:) 포함)"
-  ac: "AC-19 ~ AC-25, AC-25a, AC-25b"
-  spec: ".dev/feat-data-layer/design.md §9 (StatsRepository)"
+  id: T9
+  step: 구현
+  scope: "앱 배선 — SoozipApp의 modelContainer를 SoozipSchema.models로, S2 프로브 전용 컨테이너를 뷰 내부로 분리"
+  ac: "회귀 방지 (신규 AC 없음)"
+  spec: ".dev/feat-data-layer/design.md 수정 파일 표 — SoozipApp.swift, S2_CloudKitProbe.swift"
   files:
-    - "SoozipTests/StatsRepositoryTests.swift (신규)"
-    - "Soozip/Data/Repository/StatsRepository.swift (신규)"
-  notes: "신규 파일 2개 — 반드시 `xcodegen generate` 후 테스트. 시각은 파라미터로 받는다(streakDays(now:)는 BR-9 개정 결과). 동률은 createdAt 오름차순"
-  remaining: "T8 StatsRepository / T9 앱 배선"
+    - "Soozip/App/SoozipApp.swift"
+    - "Soozip/Spikes/S2_CloudKitProbe.swift"
+  notes: "RGR이 아닌 배선 작업. ProbeCollection/ProbeCanvas가 앱 컨테이너에서 빠지는지 확인. 끝나면 phase-implement 종료 → 변경사항 수집 → phase-review 진입"
+  remaining: "T9 앱 배선"
   after-implement: "phase-review (spec-reviewer → quality-reviewer + security-auditor) → phase-complete (verify 게이트 → 인수 → PR)"
   method: "사용자 요청으로 T3부터 에이전트 디스패치 없이 오케스트레이터가 직접 RGR 수행 중. Iron Law(실패 테스트 우선)는 유지"
   verify-command: "./scripts/test.sh  # 현재 146개 통과 (패키지 90 + 앱 56)"
