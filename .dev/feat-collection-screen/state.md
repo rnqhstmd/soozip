@@ -81,6 +81,13 @@ execution-log:
     decision: "생성 후 상세 자동 진입은 보류 — 진입 직후 할 일이 캔버스 추가(Phase 3)라 지금 넣으면 빈 화면으로 떨어진다"
   - phase: review
     result: "보안 감사 — 삭제(방어됨: 개수 명시 확인 + cascade)와 이미지 디코딩(방어됨: 프레젠터가 미리 거름) 둘이 실질 위험. 네트워크·자격증명·역직렬화 표면 없음"
+  - phase: review
+    gate: mechanical
+    result: "PASS — 빌드 성공, 237개 2회 연속 통과, 소스 경고 0건(기준선 0 유지). main 대비 22파일 +1424/-21"
+  - phase: review
+    result: "spec-review PASS — AC-1~19·22~27은 Phase 6 테스트가 직접 덮고, AC-20·21은 Phase 1 테스트가 덮는다. AC-28만 검증 불가(기록됨)"
+  - phase: review
+    finding: "[문서 위험] AC 번호가 Phase 1과 Phase 6 사이에서 충돌 — LibraryRepositoryTests에 AC-11~18이 두 뜻으로 공존한다. 다음 Phase에서 섹션 머리에 출처(P1/P6)를 붙이기로 하고 이번엔 diff를 불리지 않기로 결정"
 next-task:
   id: phase-complete
   step: RED
