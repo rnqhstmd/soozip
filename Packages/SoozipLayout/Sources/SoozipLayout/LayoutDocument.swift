@@ -64,17 +64,13 @@ public enum LayerCategory: CaseIterable, Sendable {
         case .decor:   return 30
         }
     }
-}
 
-extension Layer {
-    /// 이 레이어가 어느 상한에 걸리는가.
-    public var category: LayerCategory {
-        switch self {
-        case .photo:                return .photo
-        case .drawing:              return .drawing
-        case .text, .shape, .stamp: return .decor
-        }
-    }
+    /// 위반을 보고하는 우선순위.
+    ///
+    /// **`allCases`(선언 순서)에 기대지 않는다.** 케이스를 재배열하는, 정렬처럼
+    /// 무해해 보이는 리팩터가 사용자에게 보이는 안내를 바꿔 버린다 — 사진이
+    /// 많은데 "스티커가 많아요"라고 말하게 된다. 우선순위는 의도이므로 명시한다.
+    public static let reportingOrder: [LayerCategory] = [.photo, .drawing, .decor]
 }
 
 // MARK: - 레이어 상한 위반
@@ -100,11 +96,10 @@ public struct LayoutDocument: Codable, Equatable, Sendable {
     /// 현재 스키마 버전. 상위 버전 문서는 디코딩을 거부한다.
     public static let currentVersion = 1
 
-    // 상한의 정의는 `LayerCategory`에 있다. 여기 있는 것은 기존 호출부를 위한
-    // 별칭일 뿐이라 **두 벌이 아니다** — 값을 복제하지 않고 되짚는다.
-    public static var photoLimit: Int { LayerCategory.photo.limit }
-    public static var drawingLimit: Int { LayerCategory.drawing.limit }
-    public static var decorLimit: Int { LayerCategory.decor.limit }
+    // 상한은 `LayerCategory`에만 있다. 예전의 `photoLimit`/`drawingLimit`/
+    // `decorLimit` 별칭은 **호출부가 하나도 없어서 지웠다** — 아무도 안 쓰는
+    // 되짚기는 되짚음이 맞는지도 검증되지 않아, 나중에 배선이 붙는 순간
+    // 조용히 틀린 상한을 흘릴 수 있다.
 
     public var v: Int
     public var canvas: Size2
@@ -129,7 +124,7 @@ public struct LayoutDocument: Codable, Equatable, Sendable {
         var counts: [LayerCategory: Int] = [:]
         for layer in layers { counts[layer.category, default: 0] += 1 }
 
-        for category in LayerCategory.allCases {
+        for category in LayerCategory.reportingOrder {
             let count = counts[category] ?? 0
             guard count > category.limit else { continue }
             switch category {

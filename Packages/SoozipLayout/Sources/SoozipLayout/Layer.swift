@@ -142,6 +142,27 @@ public struct DrawingLayer: Codable, Equatable, Sendable {
     }
 }
 
+// MARK: - 타입 판별자
+
+/// 레이어 타입 5종. **값을 들지 않는 판별자다.**
+///
+/// `Layer`는 인스턴스가 있어야 타입을 알 수 있는데, 도구 팔레트는 **레이어를
+/// 만들기 전에** 버튼을 비활성화해야 한다(v4 §5.13). 이것이 없으면 뷰가
+/// "텍스트·도형·도장 → `.decor`" 매핑을 다시 적게 되고, `LayerCategory`로
+/// 막았던 두 벌이 한 계층 위로 옮겨갈 뿐이다.
+public enum LayerKind: String, CaseIterable, Sendable {
+    case photo, text, shape, stamp, drawing
+
+    /// 어느 상한에 걸리는가 (v4 §5.13).
+    public var category: LayerCategory {
+        switch self {
+        case .photo:                return .photo
+        case .drawing:              return .drawing
+        case .text, .shape, .stamp: return .decor
+        }
+    }
+}
+
 // MARK: - 다형 레이어
 
 /// layoutJSON의 `layers` 배열 원소.
@@ -179,16 +200,22 @@ public enum Layer: Equatable, Sendable {
         }
     }
 
-    /// layoutJSON의 `type` 값.
-    public var typeName: String {
+    public var kind: LayerKind {
         switch self {
-        case .photo:   return "photo"
-        case .text:    return "text"
-        case .shape:   return "shape"
-        case .stamp:   return "stamp"
-        case .drawing: return "drawing"
+        case .photo:   return .photo
+        case .text:    return .text
+        case .shape:   return .shape
+        case .stamp:   return .stamp
+        case .drawing: return .drawing
         }
     }
+
+    /// layoutJSON의 `type` 값 (v4 §8). `LayerKind`의 rawValue다 — 문자열을
+    /// 따로 적으면 판별자가 두 벌이 된다.
+    public var typeName: String { kind.rawValue }
+
+    /// 이 레이어가 어느 상한에 걸리는가 (v4 §5.13).
+    public var category: LayerCategory { kind.category }
 }
 
 extension Layer: Codable {

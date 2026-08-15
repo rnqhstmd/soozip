@@ -144,6 +144,68 @@ private func 스토어(_ 만들기: () -> Layer, _ n: Int) -> LayerStore {
 
     #expect(!store.canInsert(.photo))
     #expect(store.remaining(.photo) == 0)
+    // **`count`는 상한 초과를 관측할 수 있는 유일한 API다.** `remaining`이
+    // 0으로 클램프하므로 여기서 실제 개수를 함께 보지 않으면 `count`가
+    // 상한으로 잘려도 아무도 모른다 — 배선이 "12/8"을 못 보여준다.
+    #expect(store.count(.photo) == 12)
+}
+
+// MARK: - 위반 보고 (validate)
+
+@Test func 위반_개수는_그_범주의_개수다_전체가_아니다() {
+    // **위반 픽스처가 전부 단일 범주면 둘이 구별되지 않는다** — 그 문서에서는
+    // `layers.count`와 범주 개수가 같기 때문이다(실측 확인).
+    //
+    // 사진 9장 + 텍스트 2개인 실제 문서에서 "사진 11장"이라고 안내하면
+    // 사용자는 자기 캔버스와 맞지 않는 숫자를 본다. `CanvasPromoter`가
+    // 이 위반을 그대로 흘린다(`PromotionError.layoutInvalid`).
+    let doc = LayoutDocument(aspect: .post,
+                             layers: (0..<9).map { _ in 사진() }
+                                   + (0..<2).map { _ in 텍스트() })
+
+    #expect(doc.validate() == .photoLimitExceeded(count: 9, limit: 8))
+}
+
+@Test func 여러_범주가_동시에_넘치면_사진부터_보고한다() {
+    // **우선순위가 enum 선언 순서에 실려 있으면 안 된다.** 케이스를 재배열하는
+    // 무해해 보이는 리팩터가 사용자 안내를 바꾼다 — 사진이 많은데
+    // "스티커가 많아요"라고 말하게 된다(실측: 케이스 순서만 뒤집어도 그렇게 됐다).
+    let doc = LayoutDocument(aspect: .post,
+                             layers: (0..<9).map { _ in 사진() }
+                                   + (0..<6).map { _ in 펜() }
+                                   + (0..<31).map { _ in 도형() })
+
+    #expect(doc.validate() == .photoLimitExceeded(count: 9, limit: 8))
+}
+
+@Test func 보고_순서에_빠진_범주가_없다() {
+    // `reportingOrder`에서 빠진 범주는 **영원히 보고되지 않는다.**
+    // 상한을 넘겨도 저장이 통과해 버린다.
+    #expect(Set(LayerCategory.reportingOrder) == Set(LayerCategory.allCases))
+    #expect(LayerCategory.reportingOrder.count == LayerCategory.allCases.count)
+}
+
+// MARK: - 팔레트용 판별자
+
+@Test func 레이어를_만들기_전에도_범주를_알_수_있다() {
+    // 도구 팔레트는 **레이어를 만들기 전에** 버튼을 비활성화해야 한다(v4 §5.13).
+    // `Layer.category`만 있으면 뷰가 "텍스트·도형·도장 → decor" 매핑을 다시
+    // 적게 되고, `LayerCategory`로 막았던 두 벌이 한 계층 위로 옮겨갈 뿐이다.
+    #expect(LayerKind.photo.category == .photo)
+    #expect(LayerKind.drawing.category == .drawing)
+    for 종류 in [LayerKind.text, .shape, .stamp] {
+        #expect(종류.category == .decor, "\(종류)")
+    }
+}
+
+@Test func 인스턴스의_범주와_판별자의_범주가_같다() {
+    // 두 경로가 갈라지면 팔레트 판정과 삽입 차단이 어긋난다.
+    for (layer, kind) in [(사진(), LayerKind.photo), (펜(), .drawing),
+                          (텍스트(), .text), (도형(), .shape), (도장(), .stamp)] {
+        #expect(layer.kind == kind)
+        #expect(layer.category == kind.category, "\(kind)")
+        #expect(layer.typeName == kind.rawValue, "\(kind)")
+    }
 }
 
 // MARK: - AC-12: 단일 출처
