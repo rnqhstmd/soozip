@@ -1,21 +1,5 @@
 import Foundation
 
-public enum Edge: Sendable {
-    case left, right, top, bottom
-
-    /// 이 변을 끌 때 고정되는 반대쪽 변
-    public var opposite: Edge {
-        switch self {
-        case .left:   return .right
-        case .right:  return .left
-        case .top:    return .bottom
-        case .bottom: return .top
-        }
-    }
-
-    public var isHorizontal: Bool { self == .left || self == .right }
-}
-
 extension LayerFrame {
 
     /// 코너 핸들 드래그 — 비율을 유지하고 대각 반대편 코너를 고정한다.
@@ -60,6 +44,17 @@ extension LayerFrame {
     }
 
     /// 변 핸들 드래그 — 한 축만 바꾸고 반대쪽 변을 고정한다.
+    ///
+    /// 이 함수는 레이어 종류를 보지 않는다. `photo`에 한 축 리사이즈를 금지한
+    /// 정책(v4 §5.7)은 여기서 막을 수 없다 — 이 패키지는 `LayerKind`를 볼 수 없다.
+    ///
+    /// 타입이 보장하는 것: `LayerStore.selectionHandles(...)`에는 `edges` 매개변수가
+    /// 없어, 그 경로로 배치를 얻는 호출부는 변 집합을 바꿀 방법이 없고 `photo`의
+    /// 배치에는 변 핸들 원소가 애초에 없다.
+    ///
+    /// 타입이 보장하지 않는 것: `HandlePlacement.init(frame:edges:on:)`은 `public`이고
+    /// 임의 `Set<Edge>`를 받는다. 이 함수도 `public`이라 배치를 건너뛰고 부를 수 있다.
+    /// 즉 배치가 낸 값만 쓰는 것은 규율이지 컴파일러가 검사하는 사실이 아니다.
     public func resized(draggingEdge edge: Edge,
                         to worldPoint: Vec2,
                         minShortSide: Double,

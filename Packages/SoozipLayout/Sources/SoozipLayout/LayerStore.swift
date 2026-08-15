@@ -51,6 +51,16 @@ public struct LayerStore: Equatable, Sendable {
     /// 어긋날 수도 없고, `Equatable`도 순서만 보게 되어 정의가 분명해진다.
     private var storage: [Entry]
 
+    /// 현재 선택된 레이어의 식별자. 없으면 `nil`.
+    ///
+    /// 선택은 합성 `Equatable`에 포함된다. **`LayerStore ==`로 저장 dirty를
+    /// 판정하지 마라** — 선택은 layoutJSON에 없어서 레이어를 탭하기만 해도
+    /// `==`는 달라지지만 저장될 바이트는 그대로다. `CANVAS-5`(1.5초 디바운스
+    /// 자동 저장)나 실행취소 스냅샷이 이 비교를 dirty 판정에 쓰면 탭마다
+    /// 저장이 돌고, 실행취소 스택이 선택 변경으로 채워져 사용자가 되돌리려던
+    /// 편집이 밀려난다. 판정 기준은 `layers`(또는 인코딩 결과)여야 한다.
+    private var selectedID: UUID?
+
     /// 뒤에서 앞 순서. **`z`가 인덱스로 채워져 나간다.**
     ///
     /// `layers`와 같은 규칙을 쓴다 — 한쪽만 채우면 `EDITOR-4`가 선택 대상을
@@ -81,6 +91,30 @@ public struct LayerStore: Equatable, Sendable {
 
     /// 저장·렌더용 레이어 목록. **z가 인덱스로 채워져 나간다.**
     public var layers: [Layer] { entries.map(\.layer) }
+
+    // MARK: - 선택 (v4 §5.11)
+
+    /// 현재 선택된 항목. **`entries`에서 파생한다** — `storage`에서 직접
+    /// 찾으면 z가 항상 0이라 z-order 조작 뒤 낡은 값을 보여준다.
+    public var selection: Entry? {
+        entries.first { $0.id == selectedID }
+    }
+
+    /// 단일 선택. **저장소에 있는 id일 때만 선택한다.** `move`와 달리 이전
+    /// 상태를 보존하지 않고 "선택 없음"으로 정규화한다 — 탭이 아무것도
+    /// 맞히지 못한 것과 같게 본다. 유효한 선택이 있는 상태에서 사라진
+    /// 레이어의 id로 불리면 그 선택도 함께 해제된다.
+    ///
+    /// 없는 id를 그대로 저장하면 `selection` 조회는 파생 덕에 nil을 보여줘도
+    /// `Equatable`이 select를 하지 않은 동일한 스토어와 갈라진다.
+    public mutating func select(_ id: UUID) {
+        selectedID = storage.contains { $0.id == id } ? id : nil
+    }
+
+    /// `select`가 저장소에 없는 id를 정규화해 도달하는 상태와 같다 — 선택 없음.
+    public mutating func deselect() {
+        selectedID = nil
+    }
 
     // MARK: - 삽입·삭제
 
@@ -124,6 +158,9 @@ public struct LayerStore: Equatable, Sendable {
 
     public mutating func remove(_ id: UUID) {
         storage.removeAll { $0.id == id }
+        if selectedID == id {
+            selectedID = nil
+        }
     }
 
     // MARK: - z-order (v4 §5.11)

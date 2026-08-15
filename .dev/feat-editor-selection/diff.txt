@@ -1,0 +1,17 @@
+ .../Sources/SoozipGeometry/HandlePlacement.swift   | 138 ++++++++
+ .../Sources/SoozipGeometry/LayerFrame.swift        |  42 ++-
+ .../Sources/SoozipGeometry/ResizeAnchor.swift      |  27 +-
+ .../SoozipGeometryTests/HandlePlacementTests.swift | 354 +++++++++++++++++++
+ .../SoozipLayout/Sources/SoozipLayout/Layer.swift  |  17 +
+ .../Sources/SoozipLayout/LayerStore.swift          |  37 ++
+ .../Sources/SoozipLayout/SelectionHandles.swift    |  45 +++
+ .../Tests/SoozipLayoutTests/SelectionTests.swift   | 374 +++++++++++++++++++++
+ 8 files changed, 1015 insertions(+), 19 deletions(-)
+---
+위는 요약입니다. 전문은 500줄 규칙으로 생략했습니다 — 각 파일을 Read하십시오.
+
+[리뷰 2회차] 1회차 지적 2건을 반영한 상태입니다:
+  · [동작결함] 회전 90~270도에서 뒤집기 역효과 → HandlePlacement.swift의 flipped 조건에 'up.y <= 0' 추가 (T4 RGR)
+    + HandlePlacementTests.swift에 AC-15 테스트 추가
+  · [동작불변] select 주석-구현 의미 불일치 → LayerStore.swift 주석 정정 (로직 불변)
+    + SelectionTests.swift에 특성화 테스트 추가
