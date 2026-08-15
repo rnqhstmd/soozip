@@ -29,3 +29,6 @@ Carthage/Build/
 
 # XcodeGen 산출물의 사용자별 상태 (프로젝트 파일 자체는 커밋한다)
 *.xcodeproj/project.xcworkspace/xcuserdata/
+
+# gx-tdd verify 게이트의 일회성 검증 로그 (산출물 아님)
+.dev/*/verify-*.log

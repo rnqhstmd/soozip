@@ -1,0 +1,4 @@
+ M Packages/SoozipLayout/Sources/SoozipLayout/LayerStore.swift
+?? .dev/feat-editor-selection/
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
+?? Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift

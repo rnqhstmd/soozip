@@ -63,6 +63,23 @@ public struct LayerTransform: Codable, Equatable, Sendable {
     }
 }
 
+extension Layer {
+    /// 모델이 **스스로 아는** 기본 크기. `shape`만 안다(`ShapeLayer.width/height`).
+    ///
+    /// `nil`인 넷은 크기가 모델 밖에 있다 — `photo`는 픽셀 크기를 들지 않고,
+    /// `text`는 렌더러가 재야 폭·높이가 나오며, `stamp`·`drawing`은 구운 이미지가
+    /// 정한다. **그 넷만 주입받는다.**
+    ///
+    /// `shape`가 이 경로로 빠지는 것이 중요하다 — 주입 클로저가 `shape`에 대해
+    /// 틀린 값을 내도 도형은 영향받지 않는다. **모델이 아는 것을 밖에 묻지 않는다.**
+    public var baseSize: Size2? {
+        switch self {
+        case .shape(let l): return Size2(width: l.width, height: l.height)
+        case .photo, .text, .stamp, .drawing: return nil
+        }
+    }
+}
+
 // MARK: - 레이어 5종
 
 public struct PhotoLayer: Codable, Equatable, Sendable {

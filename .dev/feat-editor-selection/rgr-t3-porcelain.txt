@@ -1,0 +1,7 @@
+ M Packages/SoozipGeometry/Sources/SoozipGeometry/LayerFrame.swift
+ M Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift
+ M Packages/SoozipLayout/Sources/SoozipLayout/LayerStore.swift
+?? .dev/feat-editor-selection/
+?? Packages/SoozipGeometry/Sources/SoozipGeometry/HandlePlacement.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
+?? Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift
