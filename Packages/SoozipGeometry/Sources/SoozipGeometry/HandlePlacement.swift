@@ -66,6 +66,13 @@ public struct HandlePlacement: Equatable, Sendable {
     public static let rotateGap: Double = 28
     public static let flipThreshold: Double = 40
 
+    // MARK: - 크기 축 정책 (EDITOR-6 / v4 §5.7)
+    //
+    // 셋 다 `internal`이다. 바로 위의 `rotateGap`·`flipThreshold`가 `public`인 것은
+    // `EDITOR-4`의 잔재이며 **파일 밖 소비자가 0건**이다(테스트조차 리터럴 28·40을
+    // 쓰며 피한다). 오늘 쓴다면 그 둘도 `internal`이다. **이 셋을 `public`으로
+    // "통일"하지 마라** — 방향이 반대다.
+
     /// 판정값이 이 값 **미만**이면 변 핸들을 배치에서 뺀다 (FR-1·BR-1).
     ///
     /// 판정값은 `frame.size.shortSide * surface.scale` — **화면 pt**다(결정 1).
@@ -138,9 +145,18 @@ public struct HandlePlacement: Equatable, Sendable {
         // 맞추는 것이 88 = 2×44의 전제다. 논리 px로 재면 줌아웃해서 핸들이 실제로
         // 겹쳐도 발동하지 않는다.
         //
-        // **NaN이 될 수 없다**(BR-3). 위 가드가 크기의 유한성을 보장하고 `scale`은
-        // `fitScale`(비유한·0 입력에서 0을 냄) × `zoom`(`zoomed(to:)`가 비유한을 거부하고
-        // 클램프)이라 항상 유한하다. 유한 × 유한은 NaN이 아니다.
+        // **`scale`이 유한하다는 보장은 없다** — `CanvasSurface.fitScale`은 canvas·
+        // viewport가 각각 양수·유한인지만 보고 **나눗셈 결과의 오버플로우는 막지
+        // 않는다.** canvas.width에 비정규수(5e-324, 양수이며 `isFinite`)를 주고
+        // viewport가 크면 `fitScale`이 `Infinity`가 되고, 그때 `shortSide == 0`이면
+        // 판정값이 `0 × ∞ = NaN`이 된다.
+        //
+        // `NaN` 판정값은 두 비교(`>=`·`<`)가 전부 거짓이라 **변은 숨고 코너는 안
+        // 밀리는** 상태로 간다. 좌표 자체는 이미 같은 경로에서 `toScreen`이 `NaN`을
+        // 낸 뒤이므로 **이 정책이 새 실패 모드를 만들지는 않지만, 막지도 않는다.**
+        // 이 구멍은 `EDITOR-4`의 가드 설계부터 있던 것이고 여기서 좁히지 않는다 —
+        // 좁히려면 `fitScale` 쪽이거나 `init`에 `scale` 유한성 가드가 필요하며,
+        // 둘 다 이 단위의 AC 밖이다.
         let screenShortSide = frame.size.shortSide * surface.scale
         let showsEdges = screenShortSide >= Self.edgeHideThreshold
 
@@ -231,6 +247,11 @@ public struct HandlePlacement: Equatable, Sendable {
     /// (폭 0)에서 델타의 x만 0이라 폴백이 안 걸려 x 밀기가 0이 되고 **좌상단과
     /// 우상단이 같은 점으로 붕괴한다**. **성분이 0인 축에는 "안쪽"이 없다** —
     /// `|0| → 22`이므로 어느 부호를 골라도 중심에서 멀어진다.
+    ///
+    /// **비유한 `dx`는 여기서 막지 않는다.** `NaN`이면 `== 0`도 `< 0`도 거짓이라
+    /// 폴백이 아니라 `+1` 가지를 타는데, `dx`가 `NaN`이 되는 유일한 경로는
+    /// `toScreen`이 이미 비유한을 낸 경우라 **결과가 어차피 비유한이다** — 새 실패
+    /// 모드가 아니다. 이 검토를 다음 사람이 처음부터 다시 하지 않도록 적어 둔다.
     private static func screenCorner(_ corner: Corner, of frame: LayerFrame,
                                      on surface: CanvasSurface,
                                      pushedFrom screenCenter: Vec2?) -> Vec2 {
