@@ -68,6 +68,68 @@ private func π조사프레임_변포함() -> LayerFrame {
                size: Size2(width: 200, height: 250), rotation: .pi / 2)
 }
 
+// MARK: - EDITOR-6 사이클 1 전용 픽스처 (변 핸들 숨김, 88)
+//
+// 이 사이클은 코너 밀기(56)를 구현하지 않는다 — 아래 픽스처는 전부
+// `box.edgeHandles`/`placement.edges`/`orderedHandles` 세 관측면만 잰다.
+// 좌표는 오케스트레이터가 `toScreen(p) = (p.x/2, p.y/2 + 12.5)`로 전량
+// 재검산한 이진 정확 값이다.
+
+/// 판정값 정확히 70 = 140 × 0.5 — 56 이상 88 미만 구간(FR-3의 절반: 변만
+/// 숨고 코너는 이 사이클에서 다루지 않는다). AC-2.
+private func 변핸들숨김프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 140, height: 300), rotation: 0)
+}
+
+/// 판정값 정확히 56 = 112 × 0.5. `EDITOR-6` 사이클 2의 코너 밀기 임계값과
+/// 같은 숫자지만, 이 사이클은 코너 밀기를 구현하지 않으므로 여기서는
+/// "56 < 88이라 변 숨김 게이트가 이미 닫혀 있다"만 잰다(AC-4의 변 부분).
+private func 코너밀기경계프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 112, height: 300), rotation: 0)
+}
+
+/// 판정값 200 = 400 × 0.5 — 88을 크게 넘는 대형 레이어. `정책밖프레임()`
+/// (경계 정확히 88)만으로는 잡지 못하는 "임계값 부근에서만 우연히 통과"
+/// 변이의 방어선이다(AC-8).
+private func 대형정책밖프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 400, height: 400), rotation: 0)
+}
+
+/// AC-11(변 부분) 전용 — 줌 400% 표면. `HandleHitTestTests.swift`의
+/// `확대표면()`과 같은 값이다(EDITOR-5가 "세 배율에서 TL이 같은 화면
+/// 좌표에 오도록" 역산해 둔 팬 지점).
+private func 줌400표면() -> CanvasSurface {
+    표면().zoomed(to: 4).centered(on: Vec2(x: 465, y: 637.5))
+}
+
+/// AC-11(변 부분) 전용 — 줌 50% 표면. `HandleHitTestTests.swift`의
+/// `축소표면()`과 같은 값이다.
+private func 줌50표면() -> CanvasSurface {
+    표면().zoomed(to: 0.5).centered(on: Vec2(x: 640, y: 725))
+}
+
+/// AC-11(변 부분)의 **유일한** 프레임 — PRD가 명시한 "동일 논리 프레임"
+/// (중심 (540,675) · 200×100 · 회전 0)이다. `줌400표면()`·`줌50표면()`
+/// 둘 다에 이 프레임 하나를 그대로 넣는다.
+///
+/// | 표면 | scale | TL 화면 | 판정값 |
+/// |---|---|---|---|
+/// | `줌400표면()` | 2.0 | **(220, 325)** | **200** |
+/// | `줌50표면()` | 0.25 | **(220, 325)** | **25** |
+///
+/// **두 배율에서 TL이 정확히 같은 화면 좌표에 온다.** 이게 이 픽스처의
+/// 요점이다 — 화면 위치가 완전히 동일한데 정책 상태(변 유무)만 갈리므로,
+/// 차이를 만드는 것이 오직 `surface.scale`임이 격리된다. 판정값 계산에서
+/// `surface.scale`을 빼고 `shortSide`만 쓰는 변이라면 둘 다 논리 100으로
+/// 고정돼 두 배율이 **같은 정책 상태**가 되어 이 테스트가 죽인다.
+private func 줌비교대상프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 200, height: 100), rotation: 0)
+}
+
 // MARK: - AC-9: π/2에서 네 코너 전부, 양 성분
 
 @Test func π_2_회전에서_네_코너가_전부_정확한_화면_좌표에_온다() throws {
@@ -408,4 +470,111 @@ private func π조사프레임_변포함() -> LayerFrame {
     #expect(box.rotateFlipped == false)
     #expect(box.rotate.y > 0)
     #expect(isClose(box.rotate.y, 68))
+}
+
+// MARK: - EDITOR-6 사이클 1: 변 핸들 숨김 (판정값 = shortSide × scale, 임계값 88)
+//
+// 코너 밀기(56)는 사이클 2 — AC-3·5·6·7·9·10·13은 여기서 다루지 않는다.
+
+@Test func 판정값이_정확히_88이면_변_핸들이_넷_다_있다() throws {
+    // 경계는 이전 상태다 — v4 §5.7 원문이 `< 88pt`를 명시하므로 정확히
+    // 88이면 변이 "있는" 쪽이다. `flipThreshold`의 `<= 40`·`hitSize`의
+    // `<= 22`가 세운 "경계 포함" 관례와 이 상수만 **반대**라서, 그것을
+    // 모르면 `<=`로 "통일"하는 변경이 자연스러워 보인다 — 이 테스트가
+    // 그 변이(부등호 반전)를 죽인다.
+    //
+    // `정책밖프레임()`(176×300)을 재사용한다 — 사이클 0에서 이미 이
+    // 픽스처가 "정책 도입 전 준비"로 옮겨져 있다. 이 테스트는 정책 도입
+    // 전에도 통과한다(변이 항상 존재하므로) — 진짜 RED는 아래 두 테스트다.
+    let surface = 표면()
+    let frame = 정책밖프레임()
+    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(box.edgeHandles.count == 4)
+    #expect(isClose(box.topLeft.x, 226))
+    #expect(isClose(box.topLeft.y, 275))
+}
+
+@Test func 판정값이_88_미만이면_변_핸들이_전부_사라진다() throws {
+    // 판정값 70 (56 이상 88 미만) — FR-1의 핵심 RED다. `box.edgeHandles`·
+    // `placement.edges`·`orderedHandles` 세 파생 경로 모두에서 변이
+    // 사라지는지 잰다(설계서 testability: "showsEdges 게이트 — 세 관측면
+    // 전부"). 하나만 재면, 예컨대 `edgeHandles`는 걸러도 `orderedHandles`
+    // 조립부가 여전히 옛 배열을 이어붙이는 변이를 놓친다.
+    let surface = 표면()
+    let frame = 변핸들숨김프레임()
+    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(box.edgeHandles.isEmpty)
+    #expect(placement.edges.isEmpty)
+    #expect(placement.orderedHandles.count == 6)
+    #expect(placement.orderedHandles.allSatisfy {
+        if case .edge = $0.handle { return false }
+        return true
+    })
+}
+
+@Test func 판정값이_56이면_변_핸들은_이미_숨어_있다() throws {
+    // 이 사이클(사이클 1)은 코너 밀기(56)를 구현하지 않는다 — `topLeft`는
+    // 다음 사이클의 관측 대상이므로 여기서 재지 않는다. 56 < 88이라 변
+    // 숨김 게이트는 이미 닫혀 있어야 하고, 그것만이 이 테스트의 대상이다
+    // (AC-4의 변 부분).
+    let surface = 표면()
+    let frame = 코너밀기경계프레임()
+    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(box.edgeHandles.isEmpty)
+}
+
+@Test func 판정값이_88을_크게_넘으면_변_핸들_10개_전부_존재한다() throws {
+    // `정책밖프레임()`(판정값 정확히 88)만으로는 "경계 부근에서만 우연히
+    // 통과"하는 변이(예: `>=` 를 `==`로 바꾸는 변이)를 못 죽인다. 400×400
+    // (판정값 200)으로 임계값에서 멀찍이 떨어진 지점에서 회귀 없음(FR-4)을
+    // 확인한다. 이 테스트도 정책 도입 전부터 통과한다 — 부등호 반전
+    // 변이를 죽이는 방어선이지, RED 신호 자체는 아니다.
+    let surface = 표면()
+    let frame = 대형정책밖프레임()
+    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(box.edgeHandles.count == 4)
+    #expect(placement.orderedHandles.count == 10)
+    #expect(isClose(box.topLeft.x, 170))
+    #expect(isClose(box.topLeft.y, 250))
+}
+
+@Test func 같은_논리_프레임도_줌만_바꾸면_변_핸들_유무가_달라진다() throws {
+    // 결정 1(화면 pt)의 핵심 관측 — **같은 프레임**(줌비교대상프레임(),
+    // 중심 (540,675))을 두 표면(400%·50%)에 그대로 넣는다.
+    //
+    // 두 표면은 같은 논리 프레임의 좌상단을 **밀기 전 기준으로는 똑같이
+    // 화면 (220,325)에 놓도록** 역산돼 있다(`EDITOR-5`의 `확대표면()`·
+    // `축소표면()`과 같은 값). 그래서 이 쌍은 위치가 아니라 **`surface.scale`
+    // 하나만** 갈린다 — 판정값에서 `scale`을 빼면 둘 다 논리 100으로
+    // 고정돼 같은 상태가 되고 400% 쪽 `count == 4`가 깨진다.
+    //
+    // **50%의 좌상단은 단언하지 않는다.** 판정값 25는 코너 밀기 구간
+    // (< 56)이라 다음 사이클에서 밀린 좌상단 (198,303)으로 이동한다 —
+    // 여기서 (220,325)로 고정하면 그 사이클이 이 테스트를 깨뜨린다.
+    // 좌상단 이동은 코너 밀기 AC가 잰다.
+    let 확대box = try #require(
+        HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: 줌400표면()).box
+    )
+    #expect(확대box.edgeHandles.count == 4)
+    #expect(isClose(확대box.topLeft.x, 220))
+    #expect(isClose(확대box.topLeft.y, 325))
+
+    let 축소placement = HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: 줌50표면())
+    #expect(축소placement.edges.isEmpty)
+}
+
+@Test func edgeHideThreshold_상수는_88이다() {
+    // `hitSize`(44)에서 파생하지 않는 독립 리터럴이어야 한다(BR-4). 지금
+    // 상수 자체가 없어 이 참조 하나만으로 파일 전체가 컴파일에 실패한다 —
+    // 이것이 이 사이클의 1차 RED 신호다(Swift에는 NoSuchMethodError가
+    // 없으므로 컴파일 에러가 그 역할을 한다).
+    #expect(HandlePlacement.edgeHideThreshold == 88)
 }
