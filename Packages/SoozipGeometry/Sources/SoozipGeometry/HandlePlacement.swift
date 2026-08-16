@@ -59,6 +59,27 @@ public struct HandlePlacement: Equatable, Sendable {
     public static let rotateGap: Double = 28
     public static let flipThreshold: Double = 40
 
+    /// 판정값이 이 값 **미만**이면 변 핸들을 배치에서 뺀다 (FR-1·BR-1).
+    ///
+    /// 판정값은 `frame.size.shortSide * surface.scale` — **화면 pt**다(결정 1).
+    /// 논리 px로 재면 줌아웃해서 핸들이 실제로 겹쳐도 정책이 안 깨어난다.
+    ///
+    /// **`hitSize`(44)에서 파생하지 않는다**(BR-4). 88 = 2×44는 "히트 사각형 두 개가
+    /// 나란히 들어가는 최소 폭"이라는 **유래**일 뿐이다. `hitSize * 2`로 적으면
+    /// 터치 타깃을 48로 키우는 순간 겹침 정책이 96으로 조용히 따라 움직여,
+    /// 손댄 적 없는 레이어에서 변 핸들이 사라진다.
+    ///
+    /// **경계는 이전 상태다 — 정확히 88이면 변이 있다.** `flipThreshold`의 `<= 40`과
+    /// `HandleHitTest`의 `hitSize` 반쪽 `<= 22`가 "경계 포함" 관례를 세웠으나 v4 §5.7
+    /// 원문이 `< 88pt`를 명시한다. **이 한 군데만 반대**라는 것을 모르면 `<=`로
+    /// "통일"하는 변경이 자연스러워 보인다.
+    ///
+    /// **`internal`이다 — `hitSize`와 같은 이유다.** `public`으로 열면 호출부가
+    /// `size.shortSide * scale < 88`을 재기술하는 가장 짧은 경로가 생기고, 그것이
+    /// 정확히 "유일한 반영 지점"이 막으려는 것이다. 그릴 것과 잡을 것은 전부
+    /// `orderedHandles`·`hitCandidates`에서 나온다.
+    static let edgeHideThreshold: Double = 88
+
     /// `Edge.allCases`에 기대지 않는다. 시계방향인 것이 이 불변식을 검증
     /// 가능하게 만든다 — 선언 순서(`left, right, top, bottom`)대로 적으면
     /// `allCases`와 완전히 같아져, "`allCases`를 대신 쓴다"는 변이가 어떤
@@ -81,14 +102,39 @@ public struct HandlePlacement: Equatable, Sendable {
             return
         }
 
+        // 겹침 방지 판정값 = **화면에서 잰 짧은 변**(pt) — 결정 1·2 · FR-7.
+        //
+        // `Size2.shortSide`를 그대로 쓴다. "짧은 변"을 여기서 다시 정의하면 두 벌이
+        // 되고, 이 저장소는 그 실패를 네 번 겪었다.
+        //
+        // **회전을 반영하지 않는다.** 화면 축 정렬 바운딩 박스로 재면 로컬 100×300을
+        // 45° 돌렸을 때 짧은 변이 100에서 282.8로 뛰어(× 0.5 = 141.4), 사용자가 크기를
+        // 건드리지 않았는데 **회전만으로 정책이 꺼진다.**
+        //
+        // **`surface.scale`을 곱한다.** 정책의 단위를 `hitSize`(44pt)와 같은 화면 pt로
+        // 맞추는 것이 88 = 2×44의 전제다. 논리 px로 재면 줌아웃해서 핸들이 실제로
+        // 겹쳐도 발동하지 않는다.
+        //
+        // **NaN이 될 수 없다**(BR-3). 위 가드가 크기의 유한성을 보장하고 `scale`은
+        // `fitScale`(비유한·0 입력에서 0을 냄) × `zoom`(`zoomed(to:)`가 비유한을 거부하고
+        // 클램프)이라 항상 유한하다. 유한 × 유한은 NaN이 아니다.
+        let screenShortSide = frame.size.shortSide * surface.scale
+        let showsEdges = screenShortSide >= Self.edgeHideThreshold
+
         let topLeft = surface.toScreen(frame.corner(.topLeft))
         let topRight = surface.toScreen(frame.corner(.topRight))
         let bottomRight = surface.toScreen(frame.corner(.bottomRight))
         let bottomLeft = surface.toScreen(frame.corner(.bottomLeft))
 
-        let edgeHandles = Self.edgeOrder.filter(edges.contains).map {
-            PlacedEdge(edge: $0, position: surface.toScreen(frame.edgeMidpoint($0)))
-        }
+        // **크기 축이 종류 축보다 앞에서, 통째로 자른다** (FR-1 · FR-8).
+        // `filter { showsEdges && edges.contains($0) }`로 적으면 결과는 같지만 크기 축이
+        // 변마다 따로 판정되는 것처럼 읽혀, "짧은 축의 변만 숨긴다" 같은 스펙에 없는
+        // 변형이 다음 사람에게 자연스러워 보인다. **전부 아니면 전무다.**
+        let edgeHandles = showsEdges
+            ? Self.edgeOrder.filter(edges.contains).map {
+                  PlacedEdge(edge: $0, position: surface.toScreen(frame.edgeMidpoint($0)))
+              }
+            : []
 
         // 로컬 −y를 toWorld와 같은 행렬로 회전한 단위 벡터. 정규화로 구하지
         // 않는다 — 높이 0에서 0으로 나누게 된다.
@@ -176,13 +222,21 @@ public struct HandlePlacement: Equatable, Sendable {
     ///    허용했나"만 잰다. 같은 것을 `orderedHandles` 시퀀스 리터럴이나
     ///    `box.edgeHandles`로도 잴 수 있으므로 **유일한 관측면은 아니다** —
     ///    `text`(좌우 2변)에서만 가장 짧은 표현이다.
-    /// 2. `EDITOR-6` 이후: 크기 축 필터가 `init`에 얹히면 이 값은 **두 축을 모두
-    ///    통과한 최종 집합**이 된다. 그때 `SelectionTests.swift:223`
-    ///    (`placement.edges == [.left, .right, .top, .bottom]`)와 `:232`
-    ///    (`== [.left, .right]`)의 리터럴 단언은 **깨져야 정상**이다.
-    ///    **`placement.edges == kind.resizableEdges` 형태로 고치지 말 것** —
-    ///    같은 접근자로 양변을 만드는 동어반복이라 늘 초록이 되고,
-    ///    `SelectionTests.swift:185`가 그 형태를 거부한 이유를 적어 뒀다.
+    /// 2. **`EDITOR-6` 이후 이 값은 두 축을 모두 통과한 최종 집합이다** — 종류 축
+    ///    (`LayerKind.resizableEdges`)과 크기 축(`edgeHideThreshold` 88pt)이 여기서
+    ///    합류한다. 그래서 **비어 있다는 사실만으로는 어느 축이 잘랐는지 알 수 없다.**
+    ///
+    ///    ⚠️ `EDITOR-5`가 이 자리에 "`EDITOR-6` 이후 `SelectionTests.swift:223`·`:232`의
+    ///    리터럴 단언이 깨져야 정상"이라고 적어 뒀는데 **틀린 예측이었다.** 그 픽스처는
+    ///    `canvas == viewport`라 fitScale 1.0이고 크기가 100×100이라 판정값이 **100** —
+    ///    두 임계값 위다. 정책을 넣은 뒤에도 두 단언은 한 글자도 안 바뀌었다. 실제로
+    ///    깨진 것은 `SoozipGeometry` 쪽(fitScale 0.5에서 200×100 → 판정값 50)과
+    ///    `SelectionTests`의 `baseSizeOf` 도장 스텁(60×40 → 판정값 40)이었다.
+    ///
+    ///    **`placement.edges == kind.resizableEdges` 형태로 고치지 말 것** — 같은
+    ///    접근자로 양변을 만드는 동어반복이라 늘 초록이 되고, `SelectionTests.swift:185`가
+    ///    그 형태를 거부한 이유를 적어 뒀다. **이제는 그것이 두 축을 하나로 뭉개기까지
+    ///    한다** — 크기 축이 잘라도 양변이 함께 비어 통과한다.
     ///
     /// 히트 판정은 이것을 쓰지 않는다. 변 핸들은 좌표까지 필요하고 그건
     /// `orderedHandles`에 이미 있다.
