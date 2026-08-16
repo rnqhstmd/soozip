@@ -400,8 +400,11 @@ private func 줌비교대상프레임() -> LayerFrame {
 }
 
 @Test func 크기가_0이거나_음수여도_box는_존재한다() {
-    // 설계가 명시한 계약이다 — 크기 가드는 이 컴포넌트의 책임이 아니고
-    // EDITOR-6이 얹힐 자리를 보존한다.
+    // 설계가 명시한 계약이다 — 크기 가드는 이 컴포넌트의 책임이 아니다.
+    // `EDITOR-6`이 이 자리에 얹혔다: 음수 크기는 판정값도 음수
+    // (`min(-50,-30) × 0.5 = -25`)라 **두 게이트가 모두 발동한다** — 변이 숨고
+    // 코너가 밀린다. 의도된 결과이며 `abs()`나 `max(0, ·)`를 씌우면 그 계약이
+    // 깨진다.
     let surface = 표면()
     let 영크기 = LayerFrame(center: Vec2(x: 500, y: 500), size: Size2(width: 0, height: 0), rotation: 0)
     let 음수크기 = LayerFrame(center: Vec2(x: 500, y: 500), size: Size2(width: -50, height: -30), rotation: 0)
@@ -414,6 +417,10 @@ private func 줌비교대상프레임() -> LayerFrame {
     // scale이 0이 되어 모든 점이 viewport/2 = (0,0)으로 모인다. toLogical
     // 왕복은 scale=0일 때 항상 center를 반환해 어떤 구현이든 통과시키므로
     // 원시 화면 값만 본다.
+    //
+    // `EDITOR-6` 이후 이 표면에서는 `edgeHandles`가 항상 비어 **변 좌표 축이
+    // 공허하다** — 유한성은 코너 4 + 회전 1, 다섯 점만 잰다. 또 코너가 `(0,0)`
+    // 붕괴에서 `(±22,±22)`로 바뀌었는데 그것도 여기서는 무증인이다.
     let surface = CanvasSurface(canvas: Size2(width: 1080, height: 1350),
                                  viewport: Size2(width: 0, height: 0))
     let frame = LayerFrame(center: Vec2(x: 500, y: 500),
@@ -529,7 +536,7 @@ private func 줌비교대상프레임() -> LayerFrame {
     #expect(box.edgeHandles.isEmpty)
 }
 
-@Test func 판정값이_88을_크게_넘으면_변_핸들_10개_전부_존재한다() throws {
+@Test func 판정값이_88을_크게_넘으면_변_넷을_포함해_핸들_열_개가_전부_존재한다() throws {
     // `정책밖프레임()`(판정값 정확히 88)만으로는 "경계 부근에서만 우연히
     // 통과"하는 변이(예: `>=` 를 `==`로 바꾸는 변이)를 못 죽인다. 400×400
     // (판정값 200)으로 임계값에서 멀찍이 떨어진 지점에서 회귀 없음(FR-4)을
@@ -695,17 +702,20 @@ private func 영높이프레임() -> LayerFrame {
 }
 
 @Test func 코너가_밀리면_삭제_핸들도_밀린_좌상단을_그대로_따라간다() throws {
-    // AC-6. `Box.delete = { topLeft }` 계산 프로퍼티라 코너가 밀린 뒤에도
-    // 어긋나지 않아야 한다(FR-5) — 밀기를 topLeft에만 적용하고 delete를
-    // 별도 저장 프로퍼티로 두는 변이가 있다면 여기서 두 값이 갈라진다.
+    // AC-6. `Box.delete = { topLeft }` 계산 프로퍼티라 `box.delete`를 자기 자신
+    // (`box.topLeft`)과 재는 것은 항상 초록인 항등식이다
+    // (`orderedHandles의_삭제_핸들_위치는_topLeft와_같다` 근처 주석 참조). 값이 두
+    // 벌로 갈라질 수 있는 유일한 자리는 `orderedHandles`가 실제로 만드는 `.delete`
+    // 항목이므로, 여기서는 그 항목의 position이 밀린 좌표 (223,253)인지를
+    // 잰다(FR-5) — 밀기를 topLeft에만 적용하고 delete를 별도 저장 프로퍼티로 두는
+    // 변이가 있다면 `orderedHandles`의 `.delete` 항목이 밀리지 않은 값을 내
+    // 여기서 갈라진다.
     let surface = 표면()
     let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
-    let box = try #require(placement.box)
 
-    #expect(isClose(box.delete.x, box.topLeft.x))
-    #expect(isClose(box.delete.y, box.topLeft.y))
-    #expect(isClose(box.delete.x, 223))
-    #expect(isClose(box.delete.y, 253))
+    let delete = try #require(placement.orderedHandles.first { $0.handle == .delete })
+    #expect(isClose(delete.position.x, 223))
+    #expect(isClose(delete.position.y, 253))
 }
 
 @Test func 코너가_밀려도_회전_핸들은_상단_변_중점_기준을_그대로_쓴다() throws {
