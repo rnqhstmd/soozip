@@ -31,20 +31,32 @@ private func 회전핸들프레임() -> LayerFrame {
 
 // MARK: - 픽스처 B: 경계프레임() — AC-2·3 · M1
 //
-// center (100, 125), size 200×100, rotation 0. 우하단 코너가 화면 (100,100),
-// 우측 변 중점이 화면 (100,75)에 온다.
+// center (100, 75), size 200×200, rotation 0. 우하단 코너가 화면 (100,100),
+// 우측 변 중점이 화면 (100,50)에 온다.
+//
+// `EDITOR-6` 사전 이전(사이클 0): 판정값 **100**. 앵커인 우하단 코너를 화면
+// (100,100)에 고정한 채 높이를 100 → 200으로 키웠다. 제약은 B-3(변 존재,
+// 판정값 ≥ 88)과 B-1(우측 변 중점이 탐침에서 미스)뿐이라 176이면 경계에 딱
+// 붙고 200이면 여유 12가 생긴다. **부수 효과**: 상단이 뷰포트 위로 올라가
+// 회전 핸들이 뒤집힌다. BR을 (100,100)에 고정한 채 높이를 키우면 수학적으로
+// 불가피하며, B의 세 테스트는 rotate를 단언하지 않아 무해하다.
 
 private func 경계프레임() -> LayerFrame {
-    LayerFrame(center: Vec2(x: 100, y: 125), size: Size2(width: 200, height: 100), rotation: 0)
+    LayerFrame(center: Vec2(x: 100, y: 75), size: Size2(width: 200, height: 200), rotation: 0)
 }
 
 // MARK: - 픽스처 C: 겹침프레임() — AC-5·6·7·9 · M2+M4
 //
-// center (500, 425), size 200×100, rotation 0. 좌상단 코너와 삭제가 동일 좌표
+// center (500, 463), size 200×176, rotation 0. 좌상단 코너와 삭제가 동일 좌표
 // 화면 (200,200)에 겹친다.
+//
+// `EDITOR-6` 사전 이전(사이클 0): 판정값 **정확히 88**이고 **이 값이 유일하게
+// 강제된다.** 좌상단과 좌측 변 중점의 화면 y 간격은 `판정값/2`인데, C-6이 한
+// 탐침으로 둘을 동시에 히트하려면 그 간격이 44 이하 → 판정값 ≤ 88. 정책은
+// ≥ 88을 요구한다. **여유 0은 우연이 아니다.**
 
 private func 겹침프레임() -> LayerFrame {
-    LayerFrame(center: Vec2(x: 500, y: 425), size: Size2(width: 200, height: 100), rotation: 0)
+    LayerFrame(center: Vec2(x: 500, y: 463), size: Size2(width: 200, height: 176), rotation: 0)
 }
 
 // MARK: - 픽스처 D: 초소형프레임() — AC-8 · M7
@@ -54,6 +66,21 @@ private func 겹침프레임() -> LayerFrame {
 
 private func 초소형프레임() -> LayerFrame {
     LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 40, height: 40), rotation: 0)
+}
+
+// MARK: - 픽스처 D+: 팔십팔정사각프레임() — D-2 이전 (EDITOR-6 사전 이전, 사이클 0)
+//
+/// 판정값 정확히 88(= 176 × 0.5). 변 핸들이 살아 있으면서 **인접한 변 두 개가
+/// 한 점에서 동시에 히트하는 유일한 크기**다.
+///
+/// 원래 D-2는 초소형 레이어(40×40)에서 한 탐침에 코너 4 + 변 4 + 삭제까지
+/// 9개가 모이는 것을 이용해 변 하위 순서를 한 번에 고정했다. `EDITOR-6` 이후
+/// 그것은 **구조적으로 불가능**하다 — 네 변이 한 점에서 동시에 히트하려면 양
+/// 반변이 22 이하여야 하고, 그러면 판정값 ≤ 44라 변이 통째로 숨는다.
+/// 인접 쌍을 **두 번** 관측해 대체한다.
+private func 팔십팔정사각프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 176, height: 176), rotation: 0)
 }
 
 // MARK: - 픽스처 E: 회전45프레임() — AC-4
@@ -67,15 +94,21 @@ private func 회전45프레임() -> LayerFrame {
 
 // MARK: - 픽스처 F: 줌비교프레임() — AC-11·12·13
 //
-// center (540, 675), size 200×100, rotation 0, edges: []. 세 표면(100%·400%·50%)
+// center (640, 825), size 400×400, rotation 0, edges: []. 세 표면(100%·400%·50%)
 // 모두 같은 화면 좌표에 핸들이 오도록 표면 쪽에서 줌·팬을 맞춘다 — FR-6(줌과
 // 무관하게 화면 44pt 고정)을 재는 것이 목적이라 프레임은 하나로 고정한다.
 //
-// edges: []인 이유: 50%에서 레이어가 화면 50×25pt로 줄어 top mid가 히트해
+// edges: []인 이유: 축소 표면에서 top 변 중점이 탐침에 가까워져 히트하면
 // 세 표면의 기대 시퀀스가 갈라진다. 변을 빼야 세 케이스를 글자 그대로 같게 잰다.
+//
+// `EDITOR-6` 사전 이전(사이클 0): 좌상단 논리 좌표 (440,625)를 유지해 세
+// 배율 전부 화면 (220,325)가 그대로 나온다 → `확대표면()`·`축소표면()` 정의와
+// 역산 주석을 **한 글자도 안 바꾼다.** 가장 낮은 배율(0.25)에서도 판정값 ≥ 88
+// 이어야 세 배율의 기대 시퀀스가 글자 그대로 같아지는데, 352면 정확히 88
+// (여유 0)이라 400으로 잡아 100pt를 확보했다.
 
 private func 줌비교프레임() -> LayerFrame {
-    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 200, height: 100), rotation: 0)
+    LayerFrame(center: Vec2(x: 640, y: 825), size: Size2(width: 400, height: 400), rotation: 0)
 }
 
 /// 줌 400%(`zoomLimits.max`) 표면. center는 **TL이 100% 표면과 똑같이 화면
@@ -205,7 +238,7 @@ private func 화면밖프레임() -> LayerFrame {
 // MARK: - B-1 (AC-2): 탐침 (122,100) — 우하단 코너 경계 안쪽
 
 @Test func 우하단_코너_경계_22pt_이내는_탭으로_잡힌다() throws {
-    // 우측 변 중점(100,75)은 이 탐침에서 dy=25>22라 미스여야 한다 — `&&`가
+    // 우측 변 중점(100,50)은 이 탐침에서 dy=50>22라 미스여야 한다 — `&&`가
     // `‖`로 바뀌면 x축만 맞아도 히트가 되어 변까지 후보에 섞여 든다.
     let placement = HandlePlacement(frame: 경계프레임(), edges: Set(Edge.allCases), on: 표면())
     let 탐침 = Vec2(x: 122, y: 100)
@@ -226,14 +259,17 @@ private func 화면밖프레임() -> LayerFrame {
     #expect(placement.hitHandle(at: 탐침, for: .tap) == nil)
 }
 
-// MARK: - B-3 (M1): 탐침 (100,75) — 우측 변 중점 정확히
+// MARK: - B-3 (M1): 탐침 (100,50) — 우측 변 중점 정확히
 
 @Test func 우측_변_핸들은_탭과_드래그_모두에서_잡힌다() throws {
     // "드래그는 코너만 잡는다"는 틀렸다(변도 리사이즈 가능) — 드래그 단언이
     // 그 변이를 죽인다. "탭은 변을 뺀다"도 틀렸다 — 삭제만 드래그에서
     // 빠질 뿐, 탭은 변을 포함한 전부에서 최우선 후보를 낸다.
+    //
+    // 탐침이 (100,75) → (100,50)으로 바뀌었다 — `경계프레임()`이 200×200으로
+    // 커지며 우측 변 중점 화면 좌표가 이동했기 때문이다.
     let placement = HandlePlacement(frame: 경계프레임(), edges: Set(Edge.allCases), on: 표면())
-    let 탐침 = Vec2(x: 100, y: 75)
+    let 탐침 = Vec2(x: 100, y: 50)
 
     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [.edge(.right)])
 
@@ -247,8 +283,10 @@ private func 화면밖프레임() -> LayerFrame {
 // MARK: - C-1 (AC-5): 탐침 (200,200) — 삭제·좌상단 겹침, 제스처 없이 조회
 
 @Test func 삭제와_좌상단_코너가_겹치면_후보_목록에_둘_다_삭제_우선으로_담긴다() {
-    // 좌측 변 중점(200,225)은 dy=25>22라 미스해야 한다 — 22를 25로 넓히는
-    // 변이는 후보가 3개로 늘어나 이 정확한 2개 비교에서 잡힌다.
+    // 좌측 변 중점(200,244)은 dy=44>22라 미스해야 한다. `겹침프레임()`이
+    // `EDITOR-6` 사전 이전으로 판정값 88까지 커지며 이 간격이 25 → 44로
+    // 벌어져, 이제는 22를 25로 넓히는 변이를 이 지점 혼자서는 못 잡는다 —
+    // 그 변이는 대신 B-2(dx 22.5)·A-3(dy 22.5)가 죽인다.
     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
     let 탐침 = Vec2(x: 200, y: 200)
 
@@ -280,7 +318,7 @@ private func 화면밖프레임() -> LayerFrame {
 // MARK: - C-4·C-5 (AC-9a·9b): 먼 지점 — 한 축은 정확히 정렬, 다른 축만 멀다
 
 @Test func 가장_가까운_핸들과_y축으로만_먼_지점은_두_제스처_모두_핸들_아니다() {
-    // (200,400)은 좌하단(200,250)과 x가 정확히 0pt 일치하고 y만 150pt 멀다.
+    // (200,400)은 좌하단(200,288)과 x가 정확히 0pt 일치하고 y만 112pt 멀다.
     // `&&`가 `‖`로 바뀌면 x축 일치만으로 히트가 되어 이 지점이 거짓양성이 된다.
     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
     let 탐침 = Vec2(x: 200, y: 400)
@@ -301,18 +339,23 @@ private func 화면밖프레임() -> LayerFrame {
     #expect(placement.hitHandle(at: 탐침, for: .drag) == nil)
 }
 
-// MARK: - C-6 (M2+M4): 탐침 (220,220) — 원·맨해튼 구별 + position 바꿔치기 방어
+// MARK: - C-6 (M2+M4): 탐침 (220,222) — 원·맨해튼 구별 + position 바꿔치기 방어
 
 @Test func 삭제_좌상단_좌측변이_겹치는_지점의_후보는_원래_핸들_위치를_보고한다() throws {
-    // 좌상단(200,200)은 이 탐침에서 dx=20,dy=20이라 사각형(맨해튼 기준 각 축
-    // 독립 22 이내)으로는 히트이지만, 유클리드 거리로 재면 √800≈28.28>22로
+    // 좌상단(200,200)은 이 탐침에서 dx=20,dy=22라 사각형(맨해튼 기준 각 축
+    // 독립 22 이내)으로는 히트이지만, 유클리드 거리로 재면 √884≈29.73>22로
     // 미스가 된다 — "원·맨해튼" 변이가 이 지점에서만 갈린다.
     //
-    // 세 기대 position(200,200)·(200,200)·(200,225)이 전부 탐침(220,220)과
+    // 탐침이 (220,220) → (220,222)로 바뀌었다 — `겹침프레임()`이 판정값 88로
+    // 커지며 좌측 변 중점이 (200,225) → (200,244)로 내려갔고, 좌상단(200,200)과
+    // 좌측 변 중점을 한 탐침으로 동시에 히트하려면 두 점의 y 중점(222)이어야
+    // 한다. 여유 0은 우연이 아니다 — 이 조건이 성립하는 판정값은 정확히 88뿐이다.
+    //
+    // 세 기대 position(200,200)·(200,200)·(200,244)이 전부 탐침(220,222)과
     // 다르다 — `PlacedHandle(handle: h, position: point)`처럼 필터가 반환한
     // 원소의 위치를 탐침 좌표로 바꿔치기하는 변이는 이 대조가 아니면 안 잡힌다.
     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
-    let 탐침 = Vec2(x: 220, y: 220)
+    let 탐침 = Vec2(x: 220, y: 222)
 
     let 후보 = placement.hitCandidates(at: 탐침)
     try #require(후보.count == 3)
@@ -323,7 +366,7 @@ private func 화면밖프레임() -> LayerFrame {
     #expect(isClose(후보[1].position.x, 200))
     #expect(isClose(후보[1].position.y, 200))
     #expect(isClose(후보[2].position.x, 200))
-    #expect(isClose(후보[2].position.y, 225))
+    #expect(isClose(후보[2].position.y, 244))
 }
 
 // MARK: - D-1 (AC-8): 탐침 (270,340) — 좌상단·우상단 코너 거리 20pt, 진짜 동점
@@ -344,19 +387,39 @@ private func 화면밖프레임() -> LayerFrame {
     #expect(결과.handle == .corner(.topLeft))
 }
 
-// MARK: - D-2 (M7): 같은 초소형 레이어, edges: allCases, 탐침 (270,350) — 박스 화면 중심
+// MARK: - D-2 (M7): `팔십팔정사각프레임()` 이전 — 변 하위 순서를 인접 쌍 2회로 고정
+//
+// `EDITOR-6` 사전 이전(사이클 0): 원래 D-2는 초소형 레이어(40×40) 중심 한
+// 탐침에 코너 4 + 변 4 + 삭제 9개가 모이는 것을 이용해 변 하위 순서
+// (top→right→bottom→left)를 한 번에 고정했다. 정책 도입 후에는 그 배치가
+// 구조적으로 불가능해지므로(네 변 동시 히트 ↔ 판정값 ≤ 44 ↔ 변 숨김),
+// 인접한 변 쌍을 두 번 관측해 같은 순서를 고정한다.
+//
+// `Edge.allCases`(선언 순서: left,right,top,bottom)로 대신 쓰는 변이는 아래
+// 두 탐침에서 각각 `[…, .edge(.right), .edge(.top)]`·
+// `[…, .edge(.left), .edge(.bottom)]`이 되어 **둘 다 사망**한다. 다만
+// **순환 회전 변이**(`[bottom,left,top,right]`)는 두 탐침 모두 통과하므로
+// 그것은 `edgeOrder` 리터럴 테스트가 담당한다.
 
-@Test func 모든_변이_허용되면_변_핸들_후보_순서는_시계방향_top_right_bottom_left다() {
-    // 박스 화면 중심에서는 4코너 + 4변이 전부 22pt 이내로 들어와 후보가 9개다.
-    // 변 하위 순서(top→right→bottom→left)를 다른 어떤 탐침도 고정하지
-    // 못한다 — `edgeOrder`를 `allCases`(선언 순서: left,right,top,bottom)로
-    // 대신 쓰는 변이를 잡는 유일한 테스트다.
-    let placement = HandlePlacement(frame: 초소형프레임(), edges: Set(Edge.allCases), on: 표면())
-    let 탐침 = Vec2(x: 270, y: 350)
+@Test func 팔십팔정사각_박스에서_topRight_코너와_top_right_변이_한_탐침에_모인다() {
+    // 탐침 = 중심 + (22,−22): TR 코너와 top·right 변 중점이 전부 22pt
+    // 이내로 들어온다 — **top이 right보다 앞**임을 고정한다.
+    let placement = HandlePlacement(frame: 팔십팔정사각프레임(), edges: Set(Edge.allCases), on: 표면())
+    let 탐침 = Vec2(x: 292, y: 328)
 
     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
-        .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
-        .edge(.top), .edge(.right), .edge(.bottom), .edge(.left),
+        .corner(.topRight), .edge(.top), .edge(.right),
+    ])
+}
+
+@Test func 팔십팔정사각_박스에서_bottomLeft_코너와_bottom_left_변이_한_탐침에_모인다() {
+    // 탐침 = 중심 + (−22,+22): BL 코너와 bottom·left 변 중점이 전부 22pt
+    // 이내로 들어온다 — **bottom이 left보다 앞**임을 고정한다.
+    let placement = HandlePlacement(frame: 팔십팔정사각프레임(), edges: Set(Edge.allCases), on: 표면())
+    let 탐침 = Vec2(x: 248, y: 372)
+
+    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+        .corner(.bottomLeft), .edge(.bottom), .edge(.left),
     ])
 }
 

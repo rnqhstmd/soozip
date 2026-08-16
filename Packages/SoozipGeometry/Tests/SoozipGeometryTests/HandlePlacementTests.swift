@@ -45,6 +45,29 @@ private func π조사프레임() -> LayerFrame {
                rotation: .pi / 2)
 }
 
+// MARK: - EDITOR-6 사전 이전 픽스처 (사이클 0, 프로덕션 0줄 — 정책 도입 전 준비)
+
+/// 판정값 정확히 88 = 176 × 0.5 — `EDITOR-6`의 변 숨김 임계값 **경계**다.
+/// 경계는 이전 상태이므로(v4 §5.7이 `< 88pt`) 변 핸들이 **있는** 쪽이다.
+///
+/// 변 핸들을 재는 테스트를 여기 두는 이유: 기본 `뒤집기프레임`(200×100)은
+/// 판정값 50이라 `EDITOR-6` 이후 변이 사라져 단언이 통째로 무의미해진다.
+private func 정책밖프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675),
+               size: Size2(width: 176, height: 300), rotation: 0)
+}
+
+/// `π조사표면()`(fitScale 0.361111 × zoom 2 = 0.722222)에서 판정값 ≥ 88을 만든다.
+/// 200 × 0.722222 = **144.44**.
+///
+/// **높이만 100 → 250으로 키운다.** left 변 중점은 `toWorld(-w/2, 0)`이라 높이에
+/// 의존하지 않아 기대 좌표 (500,400)이 **글자 그대로 유지**된다. 폭을 건드리면
+/// 그 값이 움직여 "변끼리 뒤바뀜" 변이를 죽이던 단언을 다시 써야 한다.
+private func π조사프레임_변포함() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 500, y: 500),
+               size: Size2(width: 200, height: 250), rotation: .pi / 2)
+}
+
 // MARK: - AC-9: π/2에서 네 코너 전부, 양 성분
 
 @Test func π_2_회전에서_네_코너가_전부_정확한_화면_좌표에_온다() throws {
@@ -74,8 +97,14 @@ private func π조사프레임() -> LayerFrame {
 @Test func π_2_회전에서_left_변_핸들이_변_중점의_화면_좌표에_온다() throws {
     // shape처럼 4변을 전부 허용한 경우. left는 다른 세 변과 좌표가 다 달라서
     // 변끼리 뒤바뀌는(예: right 값을 left에 넣는) 변이를 잡는다.
+    //
+    // `π조사프레임_변포함()`을 쓴다 — 기본 `π조사프레임()`은 shortSide 100
+    // (짧은 변은 height)이라 판정값 72.22로 `EDITOR-6` 이후 변이 사라져 이
+    // 테스트가 통째로 무의미해진다. 높이만 250으로 키운 별도 픽스처로
+    // 옮겨 판정값을 144.44로 올린다(설계서 「기존 테스트 영향 처리」 참조).
+    // 기대 좌표 (500,400)은 높이 변경과 무관해 그대로 유지된다.
     let surface = π조사표면()
-    let frame = π조사프레임()
+    let frame = π조사프레임_변포함()
     let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
     let box = try #require(placement.box)
 
@@ -230,8 +259,12 @@ private func π조사프레임() -> LayerFrame {
 // MARK: - orderedHandles 전체 시퀀스
 
 @Test func orderedHandles는_삭제_코너_회전_변_순서다_변_4개() {
+    // `정책밖프레임()`(176×300, 판정값 88)을 쓴다 — 기본 `뒤집기프레임`
+    // (200×100)은 판정값 50이라 `EDITOR-6` 이후 변이 사라져 이 단언이
+    // 통째로 무의미해진다. 이 테스트는 배열 조립 순서만 재므로 어느
+    // 정책 밖 프레임을 쓰든 결과는 같다.
     let surface = 표면()
-    let frame = 뒤집기프레임(topY: 175)
+    let frame = 정책밖프레임()
     let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
 
     let 순서 = placement.orderedHandles.map { $0.handle }
@@ -346,8 +379,11 @@ private func π조사프레임() -> LayerFrame {
 // MARK: - edges 파생
 
 @Test func edges_프로퍼티는_edgeHandles에서_파생된다() {
+    // `정책밖프레임()`을 쓴다 — 기본 `뒤집기프레임`(판정값 50)은 `EDITOR-6`
+    // 이후 `edges`가 항상 빈 집합이 되어 이 테스트가 재려는 "허용 집합이
+    // edgeHandles를 통해 그대로 파생된다"는 관측이 무의미해진다.
     let surface = 표면()
-    let frame = 뒤집기프레임(topY: 175)
+    let frame = 정책밖프레임()
     let 허용 = Set<Edge>([.top, .left])
     let placement = HandlePlacement(frame: frame, edges: 허용, on: surface)
 

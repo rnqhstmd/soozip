@@ -322,6 +322,12 @@ private func 펜() -> Layer {
     // 상수 스텁을 쓰면 "항상 entries[0]을 넘긴다"는 변이가 무증상이다.
     // kind마다 다른 크기를 내는 스텁을 쓰고, 첫 번째가 아닌 인덱스 3(도장)을
     // 선택해 그 레이어의 스텁 값이 실제로 박스 크기에 반영되는지 좌표로 잰다.
+    //
+    // `EDITOR-6` 사전 이전(사이클 0): 도장 스텁을 60×40 → **120×100**으로
+    // 키웠다. `표면()`은 fitScale 1.0이라 60×40은 판정값 40으로 `EDITOR-6`의
+    // 두 임계값(56·88) 아래다. 120×100이면 판정값 100으로 정책 밖이다.
+    // **비정사각을 유지**한다 — 폭·높이 뒤바꿈 변이가 계속 죽어야 한다. 다른
+    // kind의 스텁 값(10·20·30)은 이 테스트에서 선택되지 않으므로 그대로 둔다.
     let layers: [Layer] = [사진(), 텍스트(), 펜(), 도장(), 도형(4)]
     var store = LayerStore(layers)
     store.select(store.entries[3].id)   // 도장: transform x=130, y=200
@@ -330,7 +336,7 @@ private func 펜() -> Layer {
         switch layer.kind {
         case .photo: return Size2(width: 10, height: 10)
         case .text: return Size2(width: 20, height: 20)
-        case .stamp: return Size2(width: 60, height: 40)
+        case .stamp: return Size2(width: 120, height: 100)
         case .drawing: return Size2(width: 30, height: 30)
         case .shape: return Size2(width: 999, height: 999)
         }
@@ -339,11 +345,11 @@ private func 펜() -> Layer {
     let placement = store.selectionHandles(on: 표면(), baseSizeOf: stub)
     let box = try #require(placement.box)
 
-    // 도장 스텁(60×40), scale 1 → topLeft(100,180)·bottomRight(160,220).
-    #expect(isClose(box.topLeft.x, 100))
-    #expect(isClose(box.topLeft.y, 180))
-    #expect(isClose(box.bottomRight.x, 160))
-    #expect(isClose(box.bottomRight.y, 220))
+    // 도장 스텁(120×100), scale 1 → topLeft(70,150)·bottomRight(190,250).
+    #expect(isClose(box.topLeft.x, 70))
+    #expect(isClose(box.topLeft.y, 150))
+    #expect(isClose(box.bottomRight.x, 190))
+    #expect(isClose(box.bottomRight.y, 250))
 }
 
 // MARK: - frame(baseSize:) 경유 검증
