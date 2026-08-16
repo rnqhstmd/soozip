@@ -369,15 +369,64 @@ private func 화면밖프레임() -> LayerFrame {
     #expect(isClose(후보[2].position.y, 244))
 }
 
-// MARK: - D-1 (AC-8): 탐침 (270,340) — 좌상단·우상단 코너 거리 20pt, 진짜 동점
+// MARK: - D-1 삭제 — EDITOR-6 코너 밀기가 이 픽스처에서 관측을 소멸시켰다
+//
+// 원래 D-1은 `초소형프레임()`(40×40, 판정값 20)에서 좌상단·우상단 코너가
+// 화면 거리 20pt로 동점인 것을 이용해 orderedHandles 순서 승리를 쟀다
+// (탐침 (270,340), 후보 5개: delete + 코너 4개). `EDITOR-6`의 코너 밀기
+// (56 미만 → 화면 축 방향 22pt씩 바깥)가 이 프레임에도 적용되면, 밀린 뒤
+// 탐침 (270,340)에서 네 코너 전부 dx 32로 미스가 되어 후보가 0개가 된다 —
+// **그 픽스처에서는 관측 자체가 소멸했다.**
+//
+// 시나리오 자체는 사라지지 않고 두 곳으로 옮겨졌다(설계서 「D-1 처리」):
+// (1) 크기 0 — 아래 `크기가_0인_레이어에서...`(`영크기프레임()`) — 판정값이
+//     0이라 네 코너가 밀린 뒤에도 화면 중심에서 22pt 동점을 유지해 D-1의
+//     원래 단언이 글자 그대로 보존된다.
+// (2) 56~88 밴드 — 아래 `밴드_구간에서...`(`밴드겹침프레임()`) — 코너는
+//     밀리지 않는 대신(56 이상) 45° 회전이 인접 코너를 22pt 이내로 몰아
+//     같은 종류의 동점을 만든다.
 
-@Test func 코너_거리가_20pt인_초소형_레이어에서_드래그는_좌상단_코너를_잡는다() throws {
-    // 좌상단과 우상단은 정중앙에서 거리가 완전히 같다(둘 다 dx=10,dy=0) —
-    // 삭제와 무관한 진짜 동점이라 제스처가 갈라주지 못하고 `orderedHandles`
-    // 순서(TL이 TR보다 앞)만이 승자를 정한다(BR-4). 이 순서를 재배열하는
-    // 변이나 `orderedHandles`를 거치지 않는 구현은 이 결과를 뒤집는다.
-    let placement = HandlePlacement(frame: 초소형프레임(), edges: [], on: 표면())
-    let 탐침 = Vec2(x: 270, y: 340)
+// MARK: - 픽스처 D0: 영크기프레임() — D-1 이전 (1) 크기 0
+//
+// center (540,675), size (0,0). 네 코너가 화면 중심(밀기 기준점)과 겹쳐
+// 델타가 (0,0)이 되고, `Corner.sign` 성분별 폴백으로 22pt씩 벌어진다 —
+// 좌상단 (248,328)·우상단 (292,328)·우하단 (292,372)·좌하단 (248,372).
+
+private func 영크기프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 0), rotation: 0)
+}
+
+// MARK: - 픽스처 D1: 밴드겹침프레임() — D-1 이전 (2) 56~88 밴드 (design-critic 반례)
+//
+// center (540,675), size 120×300, rotation π/4. 판정값 = 120 × 0.5 = 60 —
+// 56 이상이라 코너는 밀리지 않고, 88 미만이라 변은 숨는다. 이 구간은
+// `cornerPushThreshold`·`edgeHideThreshold` 어느 쪽도 손대지 않는 미보호
+// 구간이다(밴드 폭 56~62.225). 45°에서 좌상단·우상단의 화면 간격이
+// `60 × cos45° ≈ 42.43`로 44 이하가 되어 한 지점이 둘을 동시에 히트한다.
+
+private func 밴드겹침프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 120, height: 300), rotation: .pi / 4)
+}
+
+// MARK: - 픽스처 D2: 인접겹침프레임() — 결정 8 특성화
+//
+// center (540,675), size 40×200, rotation π/4. 판정값 = 40 × 0.5 = 20 —
+// 56 미만이라 코너가 밀린다. 좌상단·우상단의 화면 델타 부호가 **양 축
+// 모두 같아서**(둘 다 (+1,−1)) 나란히 밀려 간격 (14.14,14.14)이 밀기
+// 전후로 불변이다 — FR-2a는 마주보는 쌍에만 참이라는 것을 고정한다.
+
+private func 인접겹침프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 40, height: 200), rotation: .pi / 4)
+}
+
+@Test func 크기가_0인_레이어에서_네_코너가_동점으로_히트하고_드래그는_좌상단_코너를_잡는다() throws {
+    // D-1이 이전된 첫 번째 자리. 판정값 0이라 코너 밀기가 발동하고, 네
+    // 코너가 전부 화면 중심 (270,350)과 22pt 동점을 이룬다(`isHit`이
+    // `<=`라 경계 포함) — `orderedHandles` 순서(TL이 TR보다 앞)만이 승자를
+    // 정한다(BR-4). `.rotate`는 dy 28로 미스해야 한다 — 밀린 코너 중점이
+    // 아니라 상단 변 중점이 회전 핸들 기준임을 여기서도 재확인한다.
+    let placement = HandlePlacement(frame: 영크기프레임(), edges: Set(Edge.allCases), on: 표면())
+    let 탐침 = Vec2(x: 270, y: 350)
 
     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
         .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
@@ -385,6 +434,42 @@ private func 화면밖프레임() -> LayerFrame {
 
     let 결과 = try #require(placement.hitHandle(at: 탐침, for: .drag))
     #expect(결과.handle == .corner(.topLeft))
+}
+
+@Test func 밴드_구간에서는_코너가_밀리지_않아_인접_코너와_회전_핸들이_한_탐침에_모인다() throws {
+    // D-1이 이전된 두 번째 자리(design-critic 반례, 오케스트레이터 검산
+    // 완료). 판정값 60은 정책이 아예 손대지 않는 56~88 밴드다 — 변은
+    // 숨지만(88 미만) 코너는 밀리지 않는다(56 이상). 45°에서 좌상단·우상단의
+    // 화면 간격이 44 이하로 좁아져 한 지점이 둘을 동시에 히트하고, 게다가
+    // `.rotate`가 코너보다 더 가깝게 들어온다(유클리드 rotate 28.0 <
+    // 코너 30.0) — 그래도 `orderedHandles` 순서상 코너가 먼저라 드래그는
+    // 좌상단을 잡는다. 이 구간은 정책이 손대지 않는다는 것 자체가 관찰
+    // 대상이다(edges: allCases를 넘겨도 변은 이미 숨어 있다).
+    let placement = HandlePlacement(frame: 밴드겹침프레임(), edges: Set(Edge.allCases), on: 표면())
+    let 탐침 = Vec2(x: 323.0330, y: 296.9670)
+
+    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+        .delete, .corner(.topLeft), .corner(.topRight), .rotate,
+    ])
+
+    let 결과 = try #require(placement.hitHandle(at: 탐침, for: .drag))
+    #expect(결과.handle == .corner(.topLeft))
+}
+
+@Test func 밀린_인접_코너가_회전_핸들과_새로_겹치는_지점의_후보는_네_개다() throws {
+    // 결정 8 특성화 테스트 — **결함을 초록으로 고정한다.** 코너 밀기가
+    // 45° 근방에서는 인접 코너의 겹침을 없애지 못할 뿐 아니라, 밀기 방향
+    // (22,−22)가 회전 핸들 오프셋(rotateGap × up ≈ (19.8,−19.8))과 수렴해
+    // 밀기 전에는 없던 코너-회전 겹침을 새로 만든다. 회전 0에서는 반대로
+    // (`초소형프레임()`에서) 겹침을 없앤다 — 즉 정책은 코너-코너만 보고
+    // 코너-회전은 보지 않는다. 나중에 인접 쌍까지 고치는 변경이 있다면 이
+    // 테스트가 **의도적으로 실패해** 그 변경을 알려야 한다.
+    let placement = HandlePlacement(frame: 인접겹침프레임(), edges: [], on: 표면())
+    let 탐침 = Vec2(x: 327.3553, y: 292.6446)
+
+    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+        .delete, .corner(.topLeft), .corner(.topRight), .rotate,
+    ])
 }
 
 // MARK: - D-2 (M7): `팔십팔정사각프레임()` 이전 — 변 하위 순서를 인접 쌍 2회로 고정
@@ -426,21 +511,33 @@ private func 화면밖프레임() -> LayerFrame {
 // MARK: - D-3 (특성화): 탐침 (278,358) — BR가 2.83pt로 최근접인데 순서가 이긴다
 
 @Test func 겹침에서는_최근접_핸들이_아니라_orderedHandles_순서가_이긴다() throws {
-    // 판정은 거리를 **보지 않는다**(BR-4). 손가락이 우하단 코너 정중앙에서
-    // 2.83pt 거리인데도 드래그는 좌상단 코너를 잡는다 — 좌상단이 2.83pt가
-    // 아니라 25.5pt 떨어져 있는데도 그렇다.
+    // 판정은 거리를 **보지 않는다**(BR-4). 이 지점은 `.rotate`가 유클리드
+    // 12.17로 최근접인데(좌상단 코너는 20.40) 드래그는 좌상단 코너를 잡는다.
     //
     // 이 테스트가 없으면 `hitCandidates(at:).sorted { 거리 }.first { accepts }`
-    // 변이가 나머지 26건 전부를 통과한다 — 다른 모든 hitHandle 단언은 후보가
-    // 1개이거나 거리가 정확히 동점이라 정렬해도 순서가 안 바뀐다.
+    // 변이가 살아남는다 — `EDITOR-6`의 코너 밀기 정책이 도입된 뒤에는 이
+    // 지점이 **유일한** 방어선이다(설계서 red-writer 필수 인계 #3).
+    //
+    // 탐침이 (278,358) → (258,314)로 바뀌었다. `EDITOR-6`의 코너 밀기가
+    // `초소형프레임()`(40×40, 판정값 20)에도 적용되면서 좌상단이 (230,320)
+    // → (238,318)로, 우상단이 (310,320) → (302,318)로 이동해 옛 탐침에서는
+    // 후보 구성 자체가 달라진다. 이 픽스처는 회전 0이라 두 밀기 규칙
+    // (`Corner.sign` vs 화면 델타 부호)이 같은 값을 내므로 밀기 자체는 이
+    // 테스트의 관심사가 아니다 — 재조준의 목적은 여전히 "회전 핸들이 더
+    // 가까운데 순서가 이긴다"는 관측 하나뿐이다.
+    //
+    // 후보는 이제 코너 하나(좌상단)와 rotate 둘뿐이다 — 우상단(302,318)은
+    // 탐침에서 dx 44로 미스, 좌하단(238,362)은 dy 48로 미스하기 때문이다.
+    // 코너끼리의 상대 순서는 이 테스트가 못 잰다(후보에 코너가 하나뿐이라)
+    // — 그것은 `영크기프레임()`·`밴드겹침프레임()`이 담당한다.
     //
     // 근접 우선이 제품 의도가 되면 그것은 이 단위의 결함이 아니라
     // `EDITOR-6`·`EDITOR-10`의 새 AC다.
     let placement = HandlePlacement(frame: 초소형프레임(), edges: [], on: 표면())
-    let 탐침 = Vec2(x: 278, y: 358)
+    let 탐침 = Vec2(x: 258, y: 314)
 
     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
-        .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
+        .delete, .corner(.topLeft), .rotate,
     ])
 
     let 결과 = try #require(placement.hitHandle(at: 탐침, for: .drag))

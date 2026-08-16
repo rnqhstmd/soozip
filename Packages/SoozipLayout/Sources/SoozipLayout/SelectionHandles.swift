@@ -8,11 +8,18 @@ extension LayerKind {
     /// 그건 되돌리는 법을 알기 전까지 사용자가 실수로 인식하지 못하는 훼손이다.
     /// `text`가 좌우뿐인 것은 폭이 줄바꿈 지점이고 높이는 내용이 정하기 때문이다.
     ///
-    /// **종류 축의 문지기이지 핸들 존재의 전부가 아니다.** `EDITOR-6`이 화면 짧은
-    /// 변 88pt 미만에서 변 핸들을 걷어내고 56pt 미만에서 코너를 박스 밖으로 미는
-    /// **크기 축 필터**를 `HandlePlacement.init` 안에 얹는다. "유일한 문지기"라고
-    /// 적으면 그 시점에 이 주석이 거짓이 되고, 다음 사람은 크기 필터를 찾지 못한 채
-    /// 이 집합만 고친다.
+    /// **종류 축의 문지기이지 핸들 존재의 전부가 아니다.** `HandlePlacement.init`의
+    /// `screenShortSide`(= `frame.size.shortSide × surface.scale`)가
+    /// `edgeHideThreshold`(88) 미만이면 이 프로퍼티가 무엇을 반환하든 변 핸들이
+    /// 전부 사라진다 — **크기 축이 실제로 얹혔다.**
+    ///
+    /// 따라서 **`resizableEdges`는 종류 축만 답한다.** 실제로 그려지고 잡히는 변은
+    /// `HandlePlacement.edges`이며, **두 축이 거기서 합류한다.**
+    ///
+    /// **`placement.edges`가 비었다고 이 값이 비었다고 결론짓지 마라** — 어느 축이
+    /// 잘랐는지는 값만으로 구별되지 않는다. `SelectionTests`의
+    /// `크기_축이_코너를_밀면_종류_축이_허용한_변이_보이지_않는다`가 그 합류를
+    /// 고정한다(도형은 네 변을 허용하는데 판정값 50에서 `edges`가 빈다).
     public var resizableEdges: Set<Edge> {
         switch self {
         case .photo, .stamp, .drawing: return []

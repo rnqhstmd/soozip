@@ -378,3 +378,42 @@ private func 펜() -> Layer {
     #expect(isClose(box.bottomLeft.x, 400))
     #expect(isClose(box.bottomLeft.y, 300))
 }
+
+// MARK: - EDITOR-6 결정 7: 종류 축과 크기 축의 합류
+
+@Test func 크기_축이_코너를_밀면_종류_축이_허용한_변이_보이지_않는다() throws {
+    // `LayerKind.shape.resizableEdges`는 네 변을 허용한다(위 「resizableEdges
+    // 리터럴 표」가 고정). 하지만 `HandlePlacement.edges`는 크기 축(짧은 변
+    // × surface.scale)이 별도로 게이트한다 — 종류가 변을 허용해도 레이어가
+    // 충분히 작으면(여기서는 실효 50×50, `표면()`이 fitScale 1.0이라 판정값
+    // 정확히 50 < 56) `edges`가 **빈 집합**이 된다. 두 축이 여기서 만난다.
+    //
+    // `placement.edges == kind.resizableEdges` 형태로는 이 합류를 재지 못한다
+    // — 그 형태는 `resizableEdges`가 무엇을 반환하든 자기 자신과 비교하는
+    // 동어반복이라 늘 초록이다(`도형은_네_변_모두_리사이즈_핸들을_가진다`가
+    // 이미 이 함정을 거부했다, `SelectionTests:185` 주석 참조). 리터럴로
+    // 빈 집합을 직접 단언한다.
+    //
+    // 판정값이 56 미만이라 코너도 함께 밀린다(FR-2) — `transform.scale`이
+    // `frame(baseSize:)`를 거쳐 실제 화면 크기에 반영되는지까지 좌표로 잰다.
+    // 화면은 항등(fitScale 1.0)이라 밀기 전 좌상단은 (475,475), 중심 (500,500)
+    // 기준 델타 (−25,−25)로 (453,453)이 된다. `box.delete`가 밀린 좌상단을
+    // 그대로 따라가는지도 함께 재 FR-5가 크기 축 아래에서도 성립함을 고정한다.
+    let transform = LayerTransform(x: 500, y: 500, scale: 0.5)
+    let shape = Layer.shape(ShapeLayer(kind: .circle, width: 100, height: 100, fill: 0,
+                                       stroke: nil, strokeWidth: 0, transform: transform))
+    var store = LayerStore([shape])
+    store.select(store.entries[0].id)
+
+    let placement = store.selectionHandles(on: 표면()) { _ in Size2(width: 999, height: 999) }
+    let box = try #require(placement.box)
+
+    #expect(placement.edges.isEmpty)
+    #expect(placement.orderedHandles.count == 6)
+    #expect(isClose(box.topLeft.x, 453))
+    #expect(isClose(box.topLeft.y, 453))
+    #expect(isClose(box.bottomRight.x, 547))
+    #expect(isClose(box.bottomRight.y, 547))
+    #expect(isClose(box.delete.x, box.topLeft.x))
+    #expect(isClose(box.delete.y, box.topLeft.y))
+}

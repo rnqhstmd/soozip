@@ -51,8 +51,15 @@ public struct HandlePlacement: Equatable, Sendable {
         /// 것만이 **제스처** 때문이다. 둘을 뭉뚱그려 "제스처가 정한다"로 읽으면
         /// 배열 순서를 재배열해도 탭 동작은 안 바뀔 것으로 오해하게 된다.
         ///
-        /// **저장하지 않고 되짚는다** — 두 벌로 두면 `EDITOR-6`이 코너를 박스 밖으로
-        /// 밀어내는 순간 삭제만 제자리에 남아, 스펙에 없는 오프셋이 조용히 생긴다.
+        /// **저장하지 않고 되짚는다.** `EDITOR-6`이 실제로 그 일을 했다 — 판정값이
+        /// `cornerPushThreshold`(56) 미만이면 코너가 화면 축 방향 22pt씩 밀리는데,
+        /// 계산 프로퍼티라 삭제가 **자동으로 따라간다.** 두 벌로 뒀다면 삭제만
+        /// 제자리에 남아 스펙에 없는 오프셋이 조용히 생겼을 것이다.
+        ///
+        /// 이 항등식이 유지되는 한 **`EDITOR-5` §1-h가 경고한 경로는 열리지 않는다** —
+        /// 드래그가 `.delete`를 걸러도 `.corner(.topLeft)`가 **정확히 같은 좌표**에서
+        /// 함께 히트하므로, "후보가 전부 제스처에 거부되어 nil"이 되는 상태는
+        /// 여전히 도달 불가다.
         public var delete: Vec2 { topLeft }
     }
 
@@ -79,6 +86,22 @@ public struct HandlePlacement: Equatable, Sendable {
     /// 정확히 "유일한 반영 지점"이 막으려는 것이다. 그릴 것과 잡을 것은 전부
     /// `orderedHandles`·`hitCandidates`에서 나온다.
     static let edgeHideThreshold: Double = 88
+
+    /// 판정값이 이 값 **미만**이면 코너를 박스 바깥으로 민다 (FR-2·BR-1).
+    /// 정확히 56이면 밀지 않는다 — v4 §5.7 원문이 `<`다.
+    ///
+    /// **`edgeHideThreshold`보다 작아야 한다.** 뒤집으면 "코너는 밀렸는데 변은
+    /// 남아 있는" 구간이 생겨 밀린 코너와 제자리 변이 오히려 더 붙는다 —
+    /// 정책이 목적의 반대로 동작한다. **타입은 이 순서를 강제하지 않는다.**
+    static let cornerPushThreshold: Double = 56
+
+    /// 코너를 미는 화면 거리(pt). 축마다 독립으로 더한다 (FR-2 · 결정 3).
+    ///
+    /// **`hitSize / 2`가 아니다.** 값이 22로 같은 것은 우연이 아니지만(반쪽만큼
+    /// 벌리면 마주보는 코너의 히트 사각형이 정확히 맞닿는다) 결합을 만들지
+    /// 않는다(BR-4). `hitSize` doc의 "반쪽을 별도 상수로 두지 않는다"는
+    /// **히트 판정 축**의 이야기이고, 이것은 **배치 축**의 다른 22다.
+    static let cornerPush: Double = 22
 
     /// `Edge.allCases`에 기대지 않는다. 시계방향인 것이 이 불변식을 검증
     /// 가능하게 만든다 — 선언 순서(`left, right, top, bottom`)대로 적으면
@@ -121,10 +144,16 @@ public struct HandlePlacement: Equatable, Sendable {
         let screenShortSide = frame.size.shortSide * surface.scale
         let showsEdges = screenShortSide >= Self.edgeHideThreshold
 
-        let topLeft = surface.toScreen(frame.corner(.topLeft))
-        let topRight = surface.toScreen(frame.corner(.topRight))
-        let bottomRight = surface.toScreen(frame.corner(.bottomRight))
-        let bottomLeft = surface.toScreen(frame.corner(.bottomLeft))
+        // 밀기 기준점. **발동 여부와 기준점을 한 값으로 묶는다** — 호출부가
+        // "밀기는 켰는데 중심을 안 넘긴" 상태를 만들 수 없고, 네 코너가 같은
+        // 기준을 쓰는 것이 마주보는 쌍의 대칭성이 성립하는 전제다.
+        let pushCenter = screenShortSide < Self.cornerPushThreshold
+                       ? surface.toScreen(frame.center) : nil
+
+        let topLeft     = Self.screenCorner(.topLeft,     of: frame, on: surface, pushedFrom: pushCenter)
+        let topRight    = Self.screenCorner(.topRight,    of: frame, on: surface, pushedFrom: pushCenter)
+        let bottomRight = Self.screenCorner(.bottomRight, of: frame, on: surface, pushedFrom: pushCenter)
+        let bottomLeft  = Self.screenCorner(.bottomLeft,  of: frame, on: surface, pushedFrom: pushCenter)
 
         // **크기 축이 종류 축보다 앞에서, 통째로 자른다** (FR-1 · FR-8).
         // `filter { showsEdges && edges.contains($0) }`로 적으면 결과는 같지만 크기 축이
@@ -136,6 +165,9 @@ public struct HandlePlacement: Equatable, Sendable {
               }
             : []
 
+        // **밀린 코너를 쓰지 않는다** (FR-6). topLeft/topRight의 중점을 넣으면
+        // 코너가 밀리는 순간 회전 핸들이 22pt 더 위로 딸려 올라간다
+        // (AC-9: (270,247)이 (270,225)가 된다). v4 §5.7 원문은 코너만 명시한다.
         // 로컬 −y를 toWorld와 같은 행렬로 회전한 단위 벡터. 정규화로 구하지
         // 않는다 — 높이 0에서 0으로 나누게 된다.
         let up = Vec2(x: sin(frame.rotation), y: -cos(frame.rotation))
@@ -173,6 +205,41 @@ public struct HandlePlacement: Equatable, Sendable {
                        bottomRight: bottomRight, bottomLeft: bottomLeft,
                        edgeHandles: edgeHandles, rotate: rotate,
                        rotateFlipped: flipped)
+    }
+
+    /// 코너 하나의 최종 화면 좌표. `pushedFrom`이 `nil`이면 정책 밖이라 변환만 한다.
+    ///
+    /// **`Corner.sign`을 화면 델타로 쓰지 마라.** 그것은 **로컬** 좌표의 부호이고
+    /// (`LayerFrame.swift`), 화면 델타로 직접 쓰면 **회전 범위의 절반에서 안쪽으로
+    /// 민다.** 실측(15° 눈금 24개 중 안쪽으로 미는 회전): 정사각 200×200 **13개**
+    /// (90°~270° 전 구간) · 세로긴 100×300 **12개**(75°~240°) · 가로긴 300×100
+    /// **12개**(120°~285°). `EDITOR-8`이 15° 스냅이라 전부 도달 가능하다.
+    ///
+    /// 최악은 회전 π · 화면 폭 44pt다 — 밀린 좌상단과 우상단이 **정확히 같은 점**이
+    /// 되어, 겹침을 막으려는 정책이 없던 겹침을 만든다(간격 88 → 0).
+    ///
+    /// **회전 0에서는 두 규칙이 같은 값을 낸다.** 그래서 회전 0 픽스처만 보고
+    /// `Corner.sign`으로 되돌리는 변이는 그것들을 전부 통과한다. 죽이는 것은
+    /// 회전이 있는 셋뿐이다 — `반회전프레임()`(간격 88 → 0) · 45° 코너 밀기
+    /// (x가 +22 대신 −22가 되어 44pt 어긋남) · `인접겹침프레임()`.
+    ///
+    /// **`dx.sign`(`FloatingPointSign`)을 쓰지 않는다** — `(-0.0).sign == .minus`라
+    /// `-0.0`이 들어오면 폴백을 건너뛰고 조용히 한쪽으로 쏠린다. `dx == 0`은
+    /// `-0.0`에도 참이다.
+    ///
+    /// **폴백은 성분별이다.** 전체 벡터가 (0,0)일 때만 폴백하면, 논리 크기 (0,300)
+    /// (폭 0)에서 델타의 x만 0이라 폴백이 안 걸려 x 밀기가 0이 되고 **좌상단과
+    /// 우상단이 같은 점으로 붕괴한다**. **성분이 0인 축에는 "안쪽"이 없다** —
+    /// `|0| → 22`이므로 어느 부호를 골라도 중심에서 멀어진다.
+    private static func screenCorner(_ corner: Corner, of frame: LayerFrame,
+                                     on surface: CanvasSurface,
+                                     pushedFrom screenCenter: Vec2?) -> Vec2 {
+        let p = surface.toScreen(frame.corner(corner))
+        guard let c = screenCenter else { return p }
+        let dx = p.x - c.x, dy = p.y - c.y
+        let sx = dx == 0 ? corner.sign.x : (dx < 0 ? -1.0 : 1.0)
+        let sy = dy == 0 ? corner.sign.y : (dy < 0 ? -1.0 : 1.0)
+        return Vec2(x: p.x + sx * cornerPush, y: p.y + sy * cornerPush)
     }
 
     /// **히트 판정과 그리기의 우선순위 순서다.** 딕셔너리로는 표현할 수 없다 —
