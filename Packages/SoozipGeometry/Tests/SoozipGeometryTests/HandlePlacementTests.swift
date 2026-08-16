@@ -578,3 +578,292 @@ private func 줌비교대상프레임() -> LayerFrame {
     // 없으므로 컴파일 에러가 그 역할을 한다).
     #expect(HandlePlacement.edgeHideThreshold == 88)
 }
+
+// MARK: - EDITOR-6 사이클 2: 코너 밀기 (판정값 < 56, 화면 델타 부호 + 성분별 폴백)
+//
+// `cornerPushThreshold`·`cornerPush` 두 상수가 아직 소스에 없다 — 이 섹션의
+// 어떤 테스트든 참조하는 순간 파일 전체가 컴파일에 실패한다. 그것이 이
+// 사이클의 1차 RED 신호다(Swift에는 NoSuchMethodError가 없다).
+
+// MARK: - 사이클 2 전용 픽스처
+
+/// 판정값 정확히 50 = 100 × 0.5. 코너 밀기가 발동하는 표준 픽스처
+/// (AC-5·6·9). 밀림 전 네 코너는 (245,275)·(295,275)·(295,425)·(245,425)다.
+private func 코너밀림프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 100, height: 300), rotation: 0)
+}
+
+/// 판정값 정확히 40 = 80 × 0.5, 정사각형. `edges: []`인 종류(photo 등)에도
+/// 코너 정책이 걸리는지 재는 AC-7 전용 픽스처다.
+private func 변없는초소형프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 80, height: 80), rotation: 0)
+}
+
+/// `코너밀림프레임()`과 같은 크기(100×300)를 45°로 돌린 것 — AC-10. 판정값이
+/// 회전에 무관함(결정 2)과 밀기 방향이 `Corner.sign`이 아니라 화면 델타
+/// 부호임(결정 3-정정)을 동시에 고정하는 유일한 무리수 좌표 픽스처다.
+private func 사십오도코너밀림프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 100, height: 300), rotation: .pi / 4)
+}
+
+/// 크기 (0,0) — AC-13. 네 코너가 화면 중심(밀기 기준점)과 완전히 겹쳐 델타가
+/// (0,0)이 된다. **주의**: 이 픽스처는 "전체 벡터가 (0,0)일 때만 폴백"하는
+/// 변이도 통과시킨다(두 성분이 동시에 0이라서) — 그 변이의 유일한 증인은
+/// 아래 `영폭프레임()`·`영높이프레임()`이다.
+private func 영크기프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 0), rotation: 0)
+}
+
+/// 88×300을 π(180°)로 돌린 것 — 결정 3-정정의 핵심 방어선 중 하나(다른
+/// 둘은 AC-10·인접겹침프레임, `HandleHitTestTests.swift` 참조). `Corner.sign`
+/// (로컬 부호)을 화면 델타로 그대로 쓰는 변이는 밀린 좌상단·우상단을
+/// **정확히 같은 점** (270,403)으로 만들어 간격을 88 → 0으로 무너뜨린다 —
+/// 겹침을 막으려는 정책이 없던 겹침을 만드는 최악의 사례다. 화면 델타
+/// 부호(채택안)는 반대로 간격을 88로 유지한다.
+private func 반회전프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 88, height: 300), rotation: .pi)
+}
+
+/// 폭이 정확히 0 — 좌상단·우상단의 화면 x 델타가 0이 된다(y 델타는 −75로
+/// 0이 아니다). "전체 벡터가 (0,0)일 때만 폴백"하는 변이는 x축 폴백을
+/// 건너뛰어 두 코너를 한 점으로 붕괴시킨다. `영크기프레임()`(AC-13)은 두
+/// 성분이 동시에 0이라 이 변이를 통과시키므로, 성분별 폴백의 증인은 이
+/// 픽스처와 `영높이프레임()` 둘뿐이다.
+private func 영폭프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 300), rotation: 0)
+}
+
+/// 높이가 정확히 0 — `영폭프레임()`의 y축 짝. 좌상단·좌하단의 화면 y 델타가
+/// 0이 되고(x는 −75로 0이 아니다), "전체 벡터" 폴백 변이는 둘을 y = 350 한
+/// 점으로 붕괴시킨다.
+private func 영높이프레임() -> LayerFrame {
+    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 300, height: 0), rotation: 0)
+}
+
+// MARK: - AC-3: 56~88 구간에서는 코너가 밀리지 않는다
+
+@Test func 판정값이_70이면_56_이상이라_코너가_밀리지_않는다() throws {
+    // `변핸들숨김프레임()`(140×300, 판정값 70)을 재사용한다 — 사이클 1은 변
+    // 숨김만 쟀고 코너 좌표는 손대지 않았다. (235,275)는 밀기 전 원래
+    // 좌표이며, `cornerPushThreshold`가 도입된 뒤에도 56~88 구간에서는
+    // 그대로여야 한다(FR-3).
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 변핸들숨김프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 235))
+    #expect(isClose(box.topLeft.y, 275))
+}
+
+// MARK: - AC-4: 판정값이 정확히 56이면 코너가 밀리지 않는다
+
+@Test func 판정값이_정확히_56이면_코너가_밀리지_않는다() throws {
+    // 경계는 이전 상태다 — v4 §5.7이 `< 56pt`를 명시하므로 정확히 56이면
+    // 코너가 "밀리지 않는" 쪽이다(BR-1). **56 경계의 단독 방어선**이다 — 88
+    // 경계는 정책밖프레임·B-3·C-6 등 6중 방어선이 있지만 56은 이 테스트
+    // 하나뿐이다(설계서 testability "88 경계는 6중, 56 경계는 단독"). `<`를
+    // `<=`로 뒤집는 변이는 여기서만 잡힌다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 코너밀기경계프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 242))
+    #expect(isClose(box.topLeft.y, 275))
+}
+
+// MARK: - AC-5·6·9: 판정값 50 — 코너 밀기 + 삭제 동행 + 회전 무영향
+
+@Test func 판정값이_50이면_네_코너가_화면_축_방향으로_22pt씩_밀린다() throws {
+    // AC-5. 밀림 전 네 코너는 (245,275)·(295,275)·(295,425)·(245,425)다
+    // (표면() 중심 (540,675) 기준). 화면 중심에서 각 코너로 향하는 델타
+    // 부호대로 22pt씩 벌어진다. 네 코너·양 성분을 전부 재야 코너가
+    // 뒤바뀌는 변이(예: bottomRight에 topRight 값을 밀어 넣는)를 잡는다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    let 기대 = [
+        (box.topLeft, Vec2(x: 223, y: 253)),
+        (box.topRight, Vec2(x: 317, y: 253)),
+        (box.bottomRight, Vec2(x: 317, y: 447)),
+        (box.bottomLeft, Vec2(x: 223, y: 447)),
+    ]
+    for (실제, 기대값) in 기대 {
+        #expect(isClose(실제.x, 기대값.x))
+        #expect(isClose(실제.y, 기대값.y))
+    }
+}
+
+@Test func 코너가_밀리면_삭제_핸들도_밀린_좌상단을_그대로_따라간다() throws {
+    // AC-6. `Box.delete = { topLeft }` 계산 프로퍼티라 코너가 밀린 뒤에도
+    // 어긋나지 않아야 한다(FR-5) — 밀기를 topLeft에만 적용하고 delete를
+    // 별도 저장 프로퍼티로 두는 변이가 있다면 여기서 두 값이 갈라진다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.delete.x, box.topLeft.x))
+    #expect(isClose(box.delete.y, box.topLeft.y))
+    #expect(isClose(box.delete.x, 223))
+    #expect(isClose(box.delete.y, 253))
+}
+
+@Test func 코너가_밀려도_회전_핸들은_상단_변_중점_기준을_그대로_쓴다() throws {
+    // AC-9. 회전 핸들은 상단 변 중점 (270,275)에서 28pt 위인 (270,247)이어야
+    // 한다(FR-6). 밀린 좌상단(223,253)·우상단(317,253)의 중점 (270,253)을
+    // 기준으로 삼는 변이는 대신 (270,225)를 낸다 — 22pt 차이가 이 두 구현을
+    // 가르는 유일한 방어선이다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.rotate.x, 270))
+    #expect(isClose(box.rotate.y, 247))
+}
+
+// MARK: - AC-7: 변 핸들이 없는 종류도 코너는 밀린다 (종류 축과 크기 축의 독립성)
+
+@Test func 변_핸들이_없는_종류도_코너는_밀린다() throws {
+    // AC-7. `edges: []`로 photo·stamp·drawing 같은 종류를 흉내낸다(FR-8).
+    // 좌상단·우하단을 재고 개수(6 = 삭제1+코너4+회전1)까지 확인해 "변이
+    // 아예 없으니 orderedHandles도 비어야 한다"는 잘못된 결합을 만드는
+    // 변이를 잡는다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 변없는초소형프레임(), edges: [], on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 228))
+    #expect(isClose(box.topLeft.y, 308))
+    #expect(isClose(box.bottomRight.x, 312))
+    #expect(isClose(box.bottomRight.y, 392))
+    #expect(placement.orderedHandles.count == 6)
+}
+
+// MARK: - AC-10: 45° 회전 — 판정값 불변 + 화면 델타 부호 밀기 (결정 2·3-정정)
+
+@Test func 사십오도_회전에서도_판정값은_불변이고_밀기는_화면_델타_부호를_따른다() throws {
+    // AC-10 + 결정 3-정정의 핵심 증거. 밀기 전 좌상단은 화면 (305.3553,
+    // 279.2893)이고 박스 화면 중심 (270,350) 기준 델타는 (+35.3553,
+    // −70.7107)이다 — 부호 (+1,−1)로 밀리면 (327.3553,257.2893)이 된다.
+    //
+    // 검산 1(결정 2): 화면 축 바운딩 박스로 짧은 변을 쟀다면 45°에서
+    // (50+150)·√2 × 0.5 ≈ 141.4 > 88이 되어 정책이 아예 발동하지 않았을
+    // 것이다 — 이 테스트가 통과한다는 사실 자체가 `Size2.shortSide`가
+    // **로컬** 값임을 증명한다.
+    //
+    // 검산 2(결정 3-정정): `Corner.sign`(로컬 부호, x=−1)을 그대로 밀기에
+    // 쓰면 x가 −22 되어 (283.3553, 257.2893)을 낸다 — 이 테스트는 그 값과
+    // x축 44pt 차이로 갈린다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 사십오도코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 327.3553))
+    #expect(isClose(box.topLeft.y, 257.2893))
+}
+
+// MARK: - AC-11(코너 부분): 줌 50%에서는 판정값이 25가 되어 코너가 밀린다
+
+@Test func 줌_50_퍼센트에서는_판정값이_25가_되어_코너가_밀린다() throws {
+    // AC-11의 코너 밀기 절반(사이클 2). 사이클 1은 같은 표면 쌍에서
+    // `edges.isEmpty`만 쟀고 좌상단은 "다음 사이클이 잰다"며 비워 뒀다
+    // (`같은_논리_프레임도_줌만_바꾸면_변_핸들_유무가_달라진다` 주석 참조).
+    // 밀기 전 좌상단은 두 배율 모두 화면 (220,325)에 오도록 표면이
+    // 역산돼 있다 — 여기서는 판정값 25(<56)로 코너가 밀려 박스 화면 중심
+    // (245,337.5) 기준 델타 (−25,−12.5)만큼 22pt씩 더 밀린 (198,303)이어야
+    // 한다.
+    let surface = 줌50표면()
+    let placement = HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 198))
+    #expect(isClose(box.topLeft.y, 303))
+}
+
+// MARK: - AC-13: 크기 0에서 네 코너가 Corner.sign으로 폴백한다
+
+@Test func 크기_0에서_네_코너가_모두_Corner_sign_방향으로_폴백한다() throws {
+    // AC-13. 크기가 0이면 네 코너가 전부 화면 중심(밀기 기준점)과 겹쳐
+    // 델타가 (0,0)이 된다 — 폴백이 없으면 네 점이 한 점으로 뭉친다. 어떤
+    // 좌표에도 NaN이 없는지도 함께 잰다(BR-3).
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 영크기프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    let 기대 = [
+        (box.topLeft, Vec2(x: 248, y: 328)),
+        (box.topRight, Vec2(x: 292, y: 328)),
+        (box.bottomRight, Vec2(x: 292, y: 372)),
+        (box.bottomLeft, Vec2(x: 248, y: 372)),
+    ]
+    for (실제, 기대값) in 기대 {
+        #expect(isClose(실제.x, 기대값.x))
+        #expect(isClose(실제.y, 기대값.y))
+        #expect(실제.x.isFinite && 실제.y.isFinite)
+    }
+}
+
+// MARK: - AC-14: cornerPushThreshold·cornerPush 리터럴
+
+@Test func cornerPushThreshold와_cornerPush_상수는_56과_22다() {
+    // `hitSize`에서 파생하지 않는 독립 리터럴이어야 한다(BR-4). 지금 두
+    // 상수 모두 소스에 없어 이 참조만으로 파일 전체가 컴파일에 실패한다 —
+    // 이것이 이 사이클의 1차 RED 신호다.
+    #expect(HandlePlacement.cornerPushThreshold == 56)
+    #expect(HandlePlacement.cornerPush == 22)
+}
+
+// MARK: - 결정 3-정정: 회전 π — Corner.sign 채택 시 간격이 0으로 무너지는 반례
+
+@Test func 회전_180도_88폭_레이어에서_좌상단과_우상단이_88pt_간격을_유지한다() throws {
+    // 결정 3-정정의 핵심 방어선(88×300·π). `Corner.sign`(로컬 부호)을 화면
+    // 델타로 그대로 쓰는 변이는 밀린 좌상단·우상단을 **정확히 같은 점**
+    // (270,403)으로 만들어 간격을 88 → 0으로 무너뜨린다 — 겹침을 막으려는
+    // 정책이 없던 겹침을 만드는 최악의 사례다. 화면 델타 부호(채택안)는
+    // 반대로 간격을 88로 유지한다.
+    //
+    // 이 변이를 죽이는 것은 이 테스트 하나만이 아니다 — AC-10(x가 44pt
+    // 어긋난다)과 `HandleHitTestTests.swift`의 결정 8 특성화 테스트도 각각
+    // 다른 각도에서 같은 변이를 죽인다(설계서 red-writer 필수 인계 #2).
+    // 셋 다 필요하다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 반회전프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 314))
+    #expect(isClose(box.topLeft.y, 447))
+    #expect(isClose(box.topRight.x, 226))
+    #expect(isClose(box.topRight.y, 447))
+}
+
+// MARK: - 성분별 폴백의 증인 (2회차 설계 감점을 메우는 3회차 신설 픽스처)
+
+@Test func 폭이_0이면_x_축만_Corner_sign으로_폴백해_좌상단과_우상단이_갈라진다() throws {
+    // 성분별 폴백의 증인 중 하나. `영크기프레임()`(AC-13)은 두 성분이
+    // 동시에 0이라 "전체 벡터가 (0,0)일 때만 폴백"하는 변이도 통과시킨다.
+    // 이 픽스처는 x 델타만 0이라(y는 −75로 0이 아님) 그 변이가 x 밀기를
+    // 0으로 만들어 좌상단·우상단을 (270,253) 한 점으로 붕괴시킨다 —
+    // 성분별 폴백(채택안)만이 이 둘을 (248,253)·(292,253)으로 갈라놓는다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 영폭프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 248))
+    #expect(isClose(box.topLeft.y, 253))
+    #expect(isClose(box.topRight.x, 292))
+    #expect(isClose(box.topRight.y, 253))
+}
+
+@Test func 높이가_0이면_y_축만_Corner_sign으로_폴백해_좌상단과_좌하단이_갈라진다() throws {
+    // `영폭프레임()`의 y축 짝. 높이가 0이라 좌상단·좌하단의 화면 y 델타가
+    // 0이 되고(x는 −75로 0이 아니다), "전체 벡터" 폴백 변이는 둘을 y = 350
+    // 한 점으로 붕괴시킨다.
+    let surface = 표면()
+    let placement = HandlePlacement(frame: 영높이프레임(), edges: Set(Edge.allCases), on: surface)
+    let box = try #require(placement.box)
+
+    #expect(isClose(box.topLeft.x, 173))
+    #expect(isClose(box.topLeft.y, 328))
+    #expect(isClose(box.bottomLeft.x, 173))
+    #expect(isClose(box.bottomLeft.y, 372))
+}
