@@ -1,0 +1,2 @@
+ M Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
+?? .dev/feat-editor-overlap-guard/

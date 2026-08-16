@@ -1,0 +1,1218 @@
+diff --git a/Packages/SoozipGeometry/Sources/SoozipGeometry/HandlePlacement.swift b/Packages/SoozipGeometry/Sources/SoozipGeometry/HandlePlacement.swift
+index e34e860..87ec36e 100644
+--- a/Packages/SoozipGeometry/Sources/SoozipGeometry/HandlePlacement.swift
++++ b/Packages/SoozipGeometry/Sources/SoozipGeometry/HandlePlacement.swift
+@@ -51,14 +51,58 @@ public struct HandlePlacement: Equatable, Sendable {
+         /// 것만이 **제스처** 때문이다. 둘을 뭉뚱그려 "제스처가 정한다"로 읽으면
+         /// 배열 순서를 재배열해도 탭 동작은 안 바뀔 것으로 오해하게 된다.
+         ///
+-        /// **저장하지 않고 되짚는다** — 두 벌로 두면 `EDITOR-6`이 코너를 박스 밖으로
+-        /// 밀어내는 순간 삭제만 제자리에 남아, 스펙에 없는 오프셋이 조용히 생긴다.
++        /// **저장하지 않고 되짚는다.** `EDITOR-6`이 실제로 그 일을 했다 — 판정값이
++        /// `cornerPushThreshold`(56) 미만이면 코너가 화면 축 방향 22pt씩 밀리는데,
++        /// 계산 프로퍼티라 삭제가 **자동으로 따라간다.** 두 벌로 뒀다면 삭제만
++        /// 제자리에 남아 스펙에 없는 오프셋이 조용히 생겼을 것이다.
++        ///
++        /// 이 항등식이 유지되는 한 **`EDITOR-5` §1-h가 경고한 경로는 열리지 않는다** —
++        /// 드래그가 `.delete`를 걸러도 `.corner(.topLeft)`가 **정확히 같은 좌표**에서
++        /// 함께 히트하므로, "후보가 전부 제스처에 거부되어 nil"이 되는 상태는
++        /// 여전히 도달 불가다.
+         public var delete: Vec2 { topLeft }
+     }
+ 
+     public static let rotateGap: Double = 28
+     public static let flipThreshold: Double = 40
+ 
++    /// 판정값이 이 값 **미만**이면 변 핸들을 배치에서 뺀다 (FR-1·BR-1).
++    ///
++    /// 판정값은 `frame.size.shortSide * surface.scale` — **화면 pt**다(결정 1).
++    /// 논리 px로 재면 줌아웃해서 핸들이 실제로 겹쳐도 정책이 안 깨어난다.
++    ///
++    /// **`hitSize`(44)에서 파생하지 않는다**(BR-4). 88 = 2×44는 "히트 사각형 두 개가
++    /// 나란히 들어가는 최소 폭"이라는 **유래**일 뿐이다. `hitSize * 2`로 적으면
++    /// 터치 타깃을 48로 키우는 순간 겹침 정책이 96으로 조용히 따라 움직여,
++    /// 손댄 적 없는 레이어에서 변 핸들이 사라진다.
++    ///
++    /// **경계는 이전 상태다 — 정확히 88이면 변이 있다.** `flipThreshold`의 `<= 40`과
++    /// `HandleHitTest`의 `hitSize` 반쪽 `<= 22`가 "경계 포함" 관례를 세웠으나 v4 §5.7
++    /// 원문이 `< 88pt`를 명시한다. **이 한 군데만 반대**라는 것을 모르면 `<=`로
++    /// "통일"하는 변경이 자연스러워 보인다.
++    ///
++    /// **`internal`이다 — `hitSize`와 같은 이유다.** `public`으로 열면 호출부가
++    /// `size.shortSide * scale < 88`을 재기술하는 가장 짧은 경로가 생기고, 그것이
++    /// 정확히 "유일한 반영 지점"이 막으려는 것이다. 그릴 것과 잡을 것은 전부
++    /// `orderedHandles`·`hitCandidates`에서 나온다.
++    static let edgeHideThreshold: Double = 88
++
++    /// 판정값이 이 값 **미만**이면 코너를 박스 바깥으로 민다 (FR-2·BR-1).
++    /// 정확히 56이면 밀지 않는다 — v4 §5.7 원문이 `<`다.
++    ///
++    /// **`edgeHideThreshold`보다 작아야 한다.** 뒤집으면 "코너는 밀렸는데 변은
++    /// 남아 있는" 구간이 생겨 밀린 코너와 제자리 변이 오히려 더 붙는다 —
++    /// 정책이 목적의 반대로 동작한다. **타입은 이 순서를 강제하지 않는다.**
++    static let cornerPushThreshold: Double = 56
++
++    /// 코너를 미는 화면 거리(pt). 축마다 독립으로 더한다 (FR-2 · 결정 3).
++    ///
++    /// **`hitSize / 2`가 아니다.** 값이 22로 같은 것은 우연이 아니지만(반쪽만큼
++    /// 벌리면 마주보는 코너의 히트 사각형이 정확히 맞닿는다) 결합을 만들지
++    /// 않는다(BR-4). `hitSize` doc의 "반쪽을 별도 상수로 두지 않는다"는
++    /// **히트 판정 축**의 이야기이고, 이것은 **배치 축**의 다른 22다.
++    static let cornerPush: Double = 22
++
+     /// `Edge.allCases`에 기대지 않는다. 시계방향인 것이 이 불변식을 검증
+     /// 가능하게 만든다 — 선언 순서(`left, right, top, bottom`)대로 적으면
+     /// `allCases`와 완전히 같아져, "`allCases`를 대신 쓴다"는 변이가 어떤
+@@ -81,15 +125,49 @@ public struct HandlePlacement: Equatable, Sendable {
+             return
+         }
+ 
+-        let topLeft = surface.toScreen(frame.corner(.topLeft))
+-        let topRight = surface.toScreen(frame.corner(.topRight))
+-        let bottomRight = surface.toScreen(frame.corner(.bottomRight))
+-        let bottomLeft = surface.toScreen(frame.corner(.bottomLeft))
++        // 겹침 방지 판정값 = **화면에서 잰 짧은 변**(pt) — 결정 1·2 · FR-7.
++        //
++        // `Size2.shortSide`를 그대로 쓴다. "짧은 변"을 여기서 다시 정의하면 두 벌이
++        // 되고, 이 저장소는 그 실패를 네 번 겪었다.
++        //
++        // **회전을 반영하지 않는다.** 화면 축 정렬 바운딩 박스로 재면 로컬 100×300을
++        // 45° 돌렸을 때 짧은 변이 100에서 282.8로 뛰어(× 0.5 = 141.4), 사용자가 크기를
++        // 건드리지 않았는데 **회전만으로 정책이 꺼진다.**
++        //
++        // **`surface.scale`을 곱한다.** 정책의 단위를 `hitSize`(44pt)와 같은 화면 pt로
++        // 맞추는 것이 88 = 2×44의 전제다. 논리 px로 재면 줌아웃해서 핸들이 실제로
++        // 겹쳐도 발동하지 않는다.
++        //
++        // **NaN이 될 수 없다**(BR-3). 위 가드가 크기의 유한성을 보장하고 `scale`은
++        // `fitScale`(비유한·0 입력에서 0을 냄) × `zoom`(`zoomed(to:)`가 비유한을 거부하고
++        // 클램프)이라 항상 유한하다. 유한 × 유한은 NaN이 아니다.
++        let screenShortSide = frame.size.shortSide * surface.scale
++        let showsEdges = screenShortSide >= Self.edgeHideThreshold
++
++        // 밀기 기준점. **발동 여부와 기준점을 한 값으로 묶는다** — 호출부가
++        // "밀기는 켰는데 중심을 안 넘긴" 상태를 만들 수 없고, 네 코너가 같은
++        // 기준을 쓰는 것이 마주보는 쌍의 대칭성이 성립하는 전제다.
++        let pushCenter = screenShortSide < Self.cornerPushThreshold
++                       ? surface.toScreen(frame.center) : nil
+ 
+-        let edgeHandles = Self.edgeOrder.filter(edges.contains).map {
+-            PlacedEdge(edge: $0, position: surface.toScreen(frame.edgeMidpoint($0)))
+-        }
++        let topLeft     = Self.screenCorner(.topLeft,     of: frame, on: surface, pushedFrom: pushCenter)
++        let topRight    = Self.screenCorner(.topRight,    of: frame, on: surface, pushedFrom: pushCenter)
++        let bottomRight = Self.screenCorner(.bottomRight, of: frame, on: surface, pushedFrom: pushCenter)
++        let bottomLeft  = Self.screenCorner(.bottomLeft,  of: frame, on: surface, pushedFrom: pushCenter)
++
++        // **크기 축이 종류 축보다 앞에서, 통째로 자른다** (FR-1 · FR-8).
++        // `filter { showsEdges && edges.contains($0) }`로 적으면 결과는 같지만 크기 축이
++        // 변마다 따로 판정되는 것처럼 읽혀, "짧은 축의 변만 숨긴다" 같은 스펙에 없는
++        // 변형이 다음 사람에게 자연스러워 보인다. **전부 아니면 전무다.**
++        let edgeHandles = showsEdges
++            ? Self.edgeOrder.filter(edges.contains).map {
++                  PlacedEdge(edge: $0, position: surface.toScreen(frame.edgeMidpoint($0)))
++              }
++            : []
+ 
++        // **밀린 코너를 쓰지 않는다** (FR-6). topLeft/topRight의 중점을 넣으면
++        // 코너가 밀리는 순간 회전 핸들이 22pt 더 위로 딸려 올라간다
++        // (AC-9: (270,247)이 (270,225)가 된다). v4 §5.7 원문은 코너만 명시한다.
+         // 로컬 −y를 toWorld와 같은 행렬로 회전한 단위 벡터. 정규화로 구하지
+         // 않는다 — 높이 0에서 0으로 나누게 된다.
+         let up = Vec2(x: sin(frame.rotation), y: -cos(frame.rotation))
+@@ -129,6 +207,41 @@ public struct HandlePlacement: Equatable, Sendable {
+                        rotateFlipped: flipped)
+     }
+ 
++    /// 코너 하나의 최종 화면 좌표. `pushedFrom`이 `nil`이면 정책 밖이라 변환만 한다.
++    ///
++    /// **`Corner.sign`을 화면 델타로 쓰지 마라.** 그것은 **로컬** 좌표의 부호이고
++    /// (`LayerFrame.swift`), 화면 델타로 직접 쓰면 **회전 범위의 절반에서 안쪽으로
++    /// 민다.** 실측(15° 눈금 24개 중 안쪽으로 미는 회전): 정사각 200×200 **13개**
++    /// (90°~270° 전 구간) · 세로긴 100×300 **12개**(75°~240°) · 가로긴 300×100
++    /// **12개**(120°~285°). `EDITOR-8`이 15° 스냅이라 전부 도달 가능하다.
++    ///
++    /// 최악은 회전 π · 화면 폭 44pt다 — 밀린 좌상단과 우상단이 **정확히 같은 점**이
++    /// 되어, 겹침을 막으려는 정책이 없던 겹침을 만든다(간격 88 → 0).
++    ///
++    /// **회전 0에서는 두 규칙이 같은 값을 낸다.** 그래서 회전 0 픽스처만 보고
++    /// `Corner.sign`으로 되돌리는 변이는 그것들을 전부 통과한다. 죽이는 것은
++    /// 회전이 있는 셋뿐이다 — `반회전프레임()`(간격 88 → 0) · 45° 코너 밀기
++    /// (x가 +22 대신 −22가 되어 44pt 어긋남) · `인접겹침프레임()`.
++    ///
++    /// **`dx.sign`(`FloatingPointSign`)을 쓰지 않는다** — `(-0.0).sign == .minus`라
++    /// `-0.0`이 들어오면 폴백을 건너뛰고 조용히 한쪽으로 쏠린다. `dx == 0`은
++    /// `-0.0`에도 참이다.
++    ///
++    /// **폴백은 성분별이다.** 전체 벡터가 (0,0)일 때만 폴백하면, 논리 크기 (0,300)
++    /// (폭 0)에서 델타의 x만 0이라 폴백이 안 걸려 x 밀기가 0이 되고 **좌상단과
++    /// 우상단이 같은 점으로 붕괴한다**. **성분이 0인 축에는 "안쪽"이 없다** —
++    /// `|0| → 22`이므로 어느 부호를 골라도 중심에서 멀어진다.
++    private static func screenCorner(_ corner: Corner, of frame: LayerFrame,
++                                     on surface: CanvasSurface,
++                                     pushedFrom screenCenter: Vec2?) -> Vec2 {
++        let p = surface.toScreen(frame.corner(corner))
++        guard let c = screenCenter else { return p }
++        let dx = p.x - c.x, dy = p.y - c.y
++        let sx = dx == 0 ? corner.sign.x : (dx < 0 ? -1.0 : 1.0)
++        let sy = dy == 0 ? corner.sign.y : (dy < 0 ? -1.0 : 1.0)
++        return Vec2(x: p.x + sx * cornerPush, y: p.y + sy * cornerPush)
++    }
++
+     /// **히트 판정과 그리기의 우선순위 순서다.** 딕셔너리로는 표현할 수 없다 —
+     /// `Dictionary` 순회 순서는 실행마다 다르고, `.delete`와 `.corner(.topLeft)`는
+     /// **정확히 같은 좌표**라 그 비결정성이 곧바로 관측된다.
+@@ -176,13 +289,21 @@ public struct HandlePlacement: Equatable, Sendable {
+     ///    허용했나"만 잰다. 같은 것을 `orderedHandles` 시퀀스 리터럴이나
+     ///    `box.edgeHandles`로도 잴 수 있으므로 **유일한 관측면은 아니다** —
+     ///    `text`(좌우 2변)에서만 가장 짧은 표현이다.
+-    /// 2. `EDITOR-6` 이후: 크기 축 필터가 `init`에 얹히면 이 값은 **두 축을 모두
+-    ///    통과한 최종 집합**이 된다. 그때 `SelectionTests.swift:223`
+-    ///    (`placement.edges == [.left, .right, .top, .bottom]`)와 `:232`
+-    ///    (`== [.left, .right]`)의 리터럴 단언은 **깨져야 정상**이다.
+-    ///    **`placement.edges == kind.resizableEdges` 형태로 고치지 말 것** —
+-    ///    같은 접근자로 양변을 만드는 동어반복이라 늘 초록이 되고,
+-    ///    `SelectionTests.swift:185`가 그 형태를 거부한 이유를 적어 뒀다.
++    /// 2. **`EDITOR-6` 이후 이 값은 두 축을 모두 통과한 최종 집합이다** — 종류 축
++    ///    (`LayerKind.resizableEdges`)과 크기 축(`edgeHideThreshold` 88pt)이 여기서
++    ///    합류한다. 그래서 **비어 있다는 사실만으로는 어느 축이 잘랐는지 알 수 없다.**
++    ///
++    ///    ⚠️ `EDITOR-5`가 이 자리에 "`EDITOR-6` 이후 `SelectionTests.swift:223`·`:232`의
++    ///    리터럴 단언이 깨져야 정상"이라고 적어 뒀는데 **틀린 예측이었다.** 그 픽스처는
++    ///    `canvas == viewport`라 fitScale 1.0이고 크기가 100×100이라 판정값이 **100** —
++    ///    두 임계값 위다. 정책을 넣은 뒤에도 두 단언은 한 글자도 안 바뀌었다. 실제로
++    ///    깨진 것은 `SoozipGeometry` 쪽(fitScale 0.5에서 200×100 → 판정값 50)과
++    ///    `SelectionTests`의 `baseSizeOf` 도장 스텁(60×40 → 판정값 40)이었다.
++    ///
++    ///    **`placement.edges == kind.resizableEdges` 형태로 고치지 말 것** — 같은
++    ///    접근자로 양변을 만드는 동어반복이라 늘 초록이 되고, `SelectionTests.swift:185`가
++    ///    그 형태를 거부한 이유를 적어 뒀다. **이제는 그것이 두 축을 하나로 뭉개기까지
++    ///    한다** — 크기 축이 잘라도 양변이 함께 비어 통과한다.
+     ///
+     /// 히트 판정은 이것을 쓰지 않는다. 변 핸들은 좌표까지 필요하고 그건
+     /// `orderedHandles`에 이미 있다.
+diff --git a/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandleHitTestTests.swift b/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandleHitTestTests.swift
+index 7d922b4..18d0987 100644
+--- a/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandleHitTestTests.swift
++++ b/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandleHitTestTests.swift
+@@ -31,20 +31,32 @@ private func 회전핸들프레임() -> LayerFrame {
+ 
+ // MARK: - 픽스처 B: 경계프레임() — AC-2·3 · M1
+ //
+-// center (100, 125), size 200×100, rotation 0. 우하단 코너가 화면 (100,100),
+-// 우측 변 중점이 화면 (100,75)에 온다.
++// center (100, 75), size 200×200, rotation 0. 우하단 코너가 화면 (100,100),
++// 우측 변 중점이 화면 (100,50)에 온다.
++//
++// `EDITOR-6` 사전 이전(사이클 0): 판정값 **100**. 앵커인 우하단 코너를 화면
++// (100,100)에 고정한 채 높이를 100 → 200으로 키웠다. 제약은 B-3(변 존재,
++// 판정값 ≥ 88)과 B-1(우측 변 중점이 탐침에서 미스)뿐이라 176이면 경계에 딱
++// 붙고 200이면 여유 12가 생긴다. **부수 효과**: 상단이 뷰포트 위로 올라가
++// 회전 핸들이 뒤집힌다. BR을 (100,100)에 고정한 채 높이를 키우면 수학적으로
++// 불가피하며, B의 세 테스트는 rotate를 단언하지 않아 무해하다.
+ 
+ private func 경계프레임() -> LayerFrame {
+-    LayerFrame(center: Vec2(x: 100, y: 125), size: Size2(width: 200, height: 100), rotation: 0)
++    LayerFrame(center: Vec2(x: 100, y: 75), size: Size2(width: 200, height: 200), rotation: 0)
+ }
+ 
+ // MARK: - 픽스처 C: 겹침프레임() — AC-5·6·7·9 · M2+M4
+ //
+-// center (500, 425), size 200×100, rotation 0. 좌상단 코너와 삭제가 동일 좌표
++// center (500, 463), size 200×176, rotation 0. 좌상단 코너와 삭제가 동일 좌표
+ // 화면 (200,200)에 겹친다.
++//
++// `EDITOR-6` 사전 이전(사이클 0): 판정값 **정확히 88**이고 **이 값이 유일하게
++// 강제된다.** 좌상단과 좌측 변 중점의 화면 y 간격은 `판정값/2`인데, C-6이 한
++// 탐침으로 둘을 동시에 히트하려면 그 간격이 44 이하 → 판정값 ≤ 88. 정책은
++// ≥ 88을 요구한다. **여유 0은 우연이 아니다.**
+ 
+ private func 겹침프레임() -> LayerFrame {
+-    LayerFrame(center: Vec2(x: 500, y: 425), size: Size2(width: 200, height: 100), rotation: 0)
++    LayerFrame(center: Vec2(x: 500, y: 463), size: Size2(width: 200, height: 176), rotation: 0)
+ }
+ 
+ // MARK: - 픽스처 D: 초소형프레임() — AC-8 · M7
+@@ -56,6 +68,21 @@ private func 초소형프레임() -> LayerFrame {
+     LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 40, height: 40), rotation: 0)
+ }
+ 
++// MARK: - 픽스처 D+: 팔십팔정사각프레임() — D-2 이전 (EDITOR-6 사전 이전, 사이클 0)
++//
++/// 판정값 정확히 88(= 176 × 0.5). 변 핸들이 살아 있으면서 **인접한 변 두 개가
++/// 한 점에서 동시에 히트하는 유일한 크기**다.
++///
++/// 원래 D-2는 초소형 레이어(40×40)에서 한 탐침에 코너 4 + 변 4 + 삭제까지
++/// 9개가 모이는 것을 이용해 변 하위 순서를 한 번에 고정했다. `EDITOR-6` 이후
++/// 그것은 **구조적으로 불가능**하다 — 네 변이 한 점에서 동시에 히트하려면 양
++/// 반변이 22 이하여야 하고, 그러면 판정값 ≤ 44라 변이 통째로 숨는다.
++/// 인접 쌍을 **두 번** 관측해 대체한다.
++private func 팔십팔정사각프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 176, height: 176), rotation: 0)
++}
++
+ // MARK: - 픽스처 E: 회전45프레임() — AC-4
+ //
+ // center (540, 675), size 400×400, rotation = π/4. 45°에서만 "로컬 축 정렬"과
+@@ -67,15 +94,21 @@ private func 회전45프레임() -> LayerFrame {
+ 
+ // MARK: - 픽스처 F: 줌비교프레임() — AC-11·12·13
+ //
+-// center (540, 675), size 200×100, rotation 0, edges: []. 세 표면(100%·400%·50%)
++// center (640, 825), size 400×400, rotation 0, edges: []. 세 표면(100%·400%·50%)
+ // 모두 같은 화면 좌표에 핸들이 오도록 표면 쪽에서 줌·팬을 맞춘다 — FR-6(줌과
+ // 무관하게 화면 44pt 고정)을 재는 것이 목적이라 프레임은 하나로 고정한다.
+ //
+-// edges: []인 이유: 50%에서 레이어가 화면 50×25pt로 줄어 top mid가 히트해
++// edges: []인 이유: 축소 표면에서 top 변 중점이 탐침에 가까워져 히트하면
+ // 세 표면의 기대 시퀀스가 갈라진다. 변을 빼야 세 케이스를 글자 그대로 같게 잰다.
++//
++// `EDITOR-6` 사전 이전(사이클 0): 좌상단 논리 좌표 (440,625)를 유지해 세
++// 배율 전부 화면 (220,325)가 그대로 나온다 → `확대표면()`·`축소표면()` 정의와
++// 역산 주석을 **한 글자도 안 바꾼다.** 가장 낮은 배율(0.25)에서도 판정값 ≥ 88
++// 이어야 세 배율의 기대 시퀀스가 글자 그대로 같아지는데, 352면 정확히 88
++// (여유 0)이라 400으로 잡아 100pt를 확보했다.
+ 
+ private func 줌비교프레임() -> LayerFrame {
+-    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 200, height: 100), rotation: 0)
++    LayerFrame(center: Vec2(x: 640, y: 825), size: Size2(width: 400, height: 400), rotation: 0)
+ }
+ 
+ /// 줌 400%(`zoomLimits.max`) 표면. center는 **TL이 100% 표면과 똑같이 화면
+@@ -205,7 +238,7 @@ private func 화면밖프레임() -> LayerFrame {
+ // MARK: - B-1 (AC-2): 탐침 (122,100) — 우하단 코너 경계 안쪽
+ 
+ @Test func 우하단_코너_경계_22pt_이내는_탭으로_잡힌다() throws {
+-    // 우측 변 중점(100,75)은 이 탐침에서 dy=25>22라 미스여야 한다 — `&&`가
++    // 우측 변 중점(100,50)은 이 탐침에서 dy=50>22라 미스여야 한다 — `&&`가
+     // `‖`로 바뀌면 x축만 맞아도 히트가 되어 변까지 후보에 섞여 든다.
+     let placement = HandlePlacement(frame: 경계프레임(), edges: Set(Edge.allCases), on: 표면())
+     let 탐침 = Vec2(x: 122, y: 100)
+@@ -226,14 +259,17 @@ private func 화면밖프레임() -> LayerFrame {
+     #expect(placement.hitHandle(at: 탐침, for: .tap) == nil)
+ }
+ 
+-// MARK: - B-3 (M1): 탐침 (100,75) — 우측 변 중점 정확히
++// MARK: - B-3 (M1): 탐침 (100,50) — 우측 변 중점 정확히
+ 
+ @Test func 우측_변_핸들은_탭과_드래그_모두에서_잡힌다() throws {
+     // "드래그는 코너만 잡는다"는 틀렸다(변도 리사이즈 가능) — 드래그 단언이
+     // 그 변이를 죽인다. "탭은 변을 뺀다"도 틀렸다 — 삭제만 드래그에서
+     // 빠질 뿐, 탭은 변을 포함한 전부에서 최우선 후보를 낸다.
++    //
++    // 탐침이 (100,75) → (100,50)으로 바뀌었다 — `경계프레임()`이 200×200으로
++    // 커지며 우측 변 중점 화면 좌표가 이동했기 때문이다.
+     let placement = HandlePlacement(frame: 경계프레임(), edges: Set(Edge.allCases), on: 표면())
+-    let 탐침 = Vec2(x: 100, y: 75)
++    let 탐침 = Vec2(x: 100, y: 50)
+ 
+     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [.edge(.right)])
+ 
+@@ -247,8 +283,10 @@ private func 화면밖프레임() -> LayerFrame {
+ // MARK: - C-1 (AC-5): 탐침 (200,200) — 삭제·좌상단 겹침, 제스처 없이 조회
+ 
+ @Test func 삭제와_좌상단_코너가_겹치면_후보_목록에_둘_다_삭제_우선으로_담긴다() {
+-    // 좌측 변 중점(200,225)은 dy=25>22라 미스해야 한다 — 22를 25로 넓히는
+-    // 변이는 후보가 3개로 늘어나 이 정확한 2개 비교에서 잡힌다.
++    // 좌측 변 중점(200,244)은 dy=44>22라 미스해야 한다. `겹침프레임()`이
++    // `EDITOR-6` 사전 이전으로 판정값 88까지 커지며 이 간격이 25 → 44로
++    // 벌어져, 이제는 22를 25로 넓히는 변이를 이 지점 혼자서는 못 잡는다 —
++    // 그 변이는 대신 B-2(dx 22.5)·A-3(dy 22.5)가 죽인다.
+     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
+     let 탐침 = Vec2(x: 200, y: 200)
+ 
+@@ -280,7 +318,7 @@ private func 화면밖프레임() -> LayerFrame {
+ // MARK: - C-4·C-5 (AC-9a·9b): 먼 지점 — 한 축은 정확히 정렬, 다른 축만 멀다
+ 
+ @Test func 가장_가까운_핸들과_y축으로만_먼_지점은_두_제스처_모두_핸들_아니다() {
+-    // (200,400)은 좌하단(200,250)과 x가 정확히 0pt 일치하고 y만 150pt 멀다.
++    // (200,400)은 좌하단(200,288)과 x가 정확히 0pt 일치하고 y만 112pt 멀다.
+     // `&&`가 `‖`로 바뀌면 x축 일치만으로 히트가 되어 이 지점이 거짓양성이 된다.
+     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
+     let 탐침 = Vec2(x: 200, y: 400)
+@@ -301,18 +339,23 @@ private func 화면밖프레임() -> LayerFrame {
+     #expect(placement.hitHandle(at: 탐침, for: .drag) == nil)
+ }
+ 
+-// MARK: - C-6 (M2+M4): 탐침 (220,220) — 원·맨해튼 구별 + position 바꿔치기 방어
++// MARK: - C-6 (M2+M4): 탐침 (220,222) — 원·맨해튼 구별 + position 바꿔치기 방어
+ 
+ @Test func 삭제_좌상단_좌측변이_겹치는_지점의_후보는_원래_핸들_위치를_보고한다() throws {
+-    // 좌상단(200,200)은 이 탐침에서 dx=20,dy=20이라 사각형(맨해튼 기준 각 축
+-    // 독립 22 이내)으로는 히트이지만, 유클리드 거리로 재면 √800≈28.28>22로
++    // 좌상단(200,200)은 이 탐침에서 dx=20,dy=22라 사각형(맨해튼 기준 각 축
++    // 독립 22 이내)으로는 히트이지만, 유클리드 거리로 재면 √884≈29.73>22로
+     // 미스가 된다 — "원·맨해튼" 변이가 이 지점에서만 갈린다.
+     //
+-    // 세 기대 position(200,200)·(200,200)·(200,225)이 전부 탐침(220,220)과
++    // 탐침이 (220,220) → (220,222)로 바뀌었다 — `겹침프레임()`이 판정값 88로
++    // 커지며 좌측 변 중점이 (200,225) → (200,244)로 내려갔고, 좌상단(200,200)과
++    // 좌측 변 중점을 한 탐침으로 동시에 히트하려면 두 점의 y 중점(222)이어야
++    // 한다. 여유 0은 우연이 아니다 — 이 조건이 성립하는 판정값은 정확히 88뿐이다.
++    //
++    // 세 기대 position(200,200)·(200,200)·(200,244)이 전부 탐침(220,222)과
+     // 다르다 — `PlacedHandle(handle: h, position: point)`처럼 필터가 반환한
+     // 원소의 위치를 탐침 좌표로 바꿔치기하는 변이는 이 대조가 아니면 안 잡힌다.
+     let placement = HandlePlacement(frame: 겹침프레임(), edges: Set(Edge.allCases), on: 표면())
+-    let 탐침 = Vec2(x: 220, y: 220)
++    let 탐침 = Vec2(x: 220, y: 222)
+ 
+     let 후보 = placement.hitCandidates(at: 탐침)
+     try #require(후보.count == 3)
+@@ -323,18 +366,67 @@ private func 화면밖프레임() -> LayerFrame {
+     #expect(isClose(후보[1].position.x, 200))
+     #expect(isClose(후보[1].position.y, 200))
+     #expect(isClose(후보[2].position.x, 200))
+-    #expect(isClose(후보[2].position.y, 225))
++    #expect(isClose(후보[2].position.y, 244))
++}
++
++// MARK: - D-1 삭제 — EDITOR-6 코너 밀기가 이 픽스처에서 관측을 소멸시켰다
++//
++// 원래 D-1은 `초소형프레임()`(40×40, 판정값 20)에서 좌상단·우상단 코너가
++// 화면 거리 20pt로 동점인 것을 이용해 orderedHandles 순서 승리를 쟀다
++// (탐침 (270,340), 후보 5개: delete + 코너 4개). `EDITOR-6`의 코너 밀기
++// (56 미만 → 화면 축 방향 22pt씩 바깥)가 이 프레임에도 적용되면, 밀린 뒤
++// 탐침 (270,340)에서 네 코너 전부 dx 32로 미스가 되어 후보가 0개가 된다 —
++// **그 픽스처에서는 관측 자체가 소멸했다.**
++//
++// 시나리오 자체는 사라지지 않고 두 곳으로 옮겨졌다(설계서 「D-1 처리」):
++// (1) 크기 0 — 아래 `크기가_0인_레이어에서...`(`영크기프레임()`) — 판정값이
++//     0이라 네 코너가 밀린 뒤에도 화면 중심에서 22pt 동점을 유지해 D-1의
++//     원래 단언이 글자 그대로 보존된다.
++// (2) 56~88 밴드 — 아래 `밴드_구간에서...`(`밴드겹침프레임()`) — 코너는
++//     밀리지 않는 대신(56 이상) 45° 회전이 인접 코너를 22pt 이내로 몰아
++//     같은 종류의 동점을 만든다.
++
++// MARK: - 픽스처 D0: 영크기프레임() — D-1 이전 (1) 크기 0
++//
++// center (540,675), size (0,0). 네 코너가 화면 중심(밀기 기준점)과 겹쳐
++// 델타가 (0,0)이 되고, `Corner.sign` 성분별 폴백으로 22pt씩 벌어진다 —
++// 좌상단 (248,328)·우상단 (292,328)·우하단 (292,372)·좌하단 (248,372).
++
++private func 영크기프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 0), rotation: 0)
+ }
+ 
+-// MARK: - D-1 (AC-8): 탐침 (270,340) — 좌상단·우상단 코너 거리 20pt, 진짜 동점
++// MARK: - 픽스처 D1: 밴드겹침프레임() — D-1 이전 (2) 56~88 밴드 (design-critic 반례)
++//
++// center (540,675), size 120×300, rotation π/4. 판정값 = 120 × 0.5 = 60 —
++// 56 이상이라 코너는 밀리지 않고, 88 미만이라 변은 숨는다. 이 구간은
++// `cornerPushThreshold`·`edgeHideThreshold` 어느 쪽도 손대지 않는 미보호
++// 구간이다(밴드 폭 56~62.225). 45°에서 좌상단·우상단의 화면 간격이
++// `60 × cos45° ≈ 42.43`로 44 이하가 되어 한 지점이 둘을 동시에 히트한다.
+ 
+-@Test func 코너_거리가_20pt인_초소형_레이어에서_드래그는_좌상단_코너를_잡는다() throws {
+-    // 좌상단과 우상단은 정중앙에서 거리가 완전히 같다(둘 다 dx=10,dy=0) —
+-    // 삭제와 무관한 진짜 동점이라 제스처가 갈라주지 못하고 `orderedHandles`
+-    // 순서(TL이 TR보다 앞)만이 승자를 정한다(BR-4). 이 순서를 재배열하는
+-    // 변이나 `orderedHandles`를 거치지 않는 구현은 이 결과를 뒤집는다.
+-    let placement = HandlePlacement(frame: 초소형프레임(), edges: [], on: 표면())
+-    let 탐침 = Vec2(x: 270, y: 340)
++private func 밴드겹침프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 120, height: 300), rotation: .pi / 4)
++}
++
++// MARK: - 픽스처 D2: 인접겹침프레임() — 결정 8 특성화
++//
++// center (540,675), size 40×200, rotation π/4. 판정값 = 40 × 0.5 = 20 —
++// 56 미만이라 코너가 밀린다. 좌상단·우상단의 화면 델타 부호가 **양 축
++// 모두 같아서**(둘 다 (+1,−1)) 나란히 밀려 간격 (14.14,14.14)이 밀기
++// 전후로 불변이다 — FR-2a는 마주보는 쌍에만 참이라는 것을 고정한다.
++
++private func 인접겹침프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 40, height: 200), rotation: .pi / 4)
++}
++
++@Test func 크기가_0인_레이어에서_네_코너가_동점으로_히트하고_드래그는_좌상단_코너를_잡는다() throws {
++    // D-1이 이전된 첫 번째 자리. 판정값 0이라 코너 밀기가 발동하고, 네
++    // 코너가 전부 화면 중심 (270,350)과 22pt 동점을 이룬다(`isHit`이
++    // `<=`라 경계 포함) — `orderedHandles` 순서(TL이 TR보다 앞)만이 승자를
++    // 정한다(BR-4). `.rotate`는 dy 28로 미스해야 한다 — 밀린 코너 중점이
++    // 아니라 상단 변 중점이 회전 핸들 기준임을 여기서도 재확인한다.
++    let placement = HandlePlacement(frame: 영크기프레임(), edges: Set(Edge.allCases), on: 표면())
++    let 탐침 = Vec2(x: 270, y: 350)
+ 
+     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+         .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
+@@ -344,40 +436,108 @@ private func 화면밖프레임() -> LayerFrame {
+     #expect(결과.handle == .corner(.topLeft))
+ }
+ 
+-// MARK: - D-2 (M7): 같은 초소형 레이어, edges: allCases, 탐침 (270,350) — 박스 화면 중심
++@Test func 밴드_구간에서는_코너가_밀리지_않아_인접_코너와_회전_핸들이_한_탐침에_모인다() throws {
++    // D-1이 이전된 두 번째 자리(design-critic 반례, 오케스트레이터 검산
++    // 완료). 판정값 60은 정책이 아예 손대지 않는 56~88 밴드다 — 변은
++    // 숨지만(88 미만) 코너는 밀리지 않는다(56 이상). 45°에서 좌상단·우상단의
++    // 화면 간격이 44 이하로 좁아져 한 지점이 둘을 동시에 히트하고, 게다가
++    // `.rotate`가 코너보다 더 가깝게 들어온다(유클리드 rotate 28.0 <
++    // 코너 30.0) — 그래도 `orderedHandles` 순서상 코너가 먼저라 드래그는
++    // 좌상단을 잡는다. 이 구간은 정책이 손대지 않는다는 것 자체가 관찰
++    // 대상이다(edges: allCases를 넘겨도 변은 이미 숨어 있다).
++    let placement = HandlePlacement(frame: 밴드겹침프레임(), edges: Set(Edge.allCases), on: 표면())
++    let 탐침 = Vec2(x: 323.0330, y: 296.9670)
+ 
+-@Test func 모든_변이_허용되면_변_핸들_후보_순서는_시계방향_top_right_bottom_left다() {
+-    // 박스 화면 중심에서는 4코너 + 4변이 전부 22pt 이내로 들어와 후보가 9개다.
+-    // 변 하위 순서(top→right→bottom→left)를 다른 어떤 탐침도 고정하지
+-    // 못한다 — `edgeOrder`를 `allCases`(선언 순서: left,right,top,bottom)로
+-    // 대신 쓰는 변이를 잡는 유일한 테스트다.
+-    let placement = HandlePlacement(frame: 초소형프레임(), edges: Set(Edge.allCases), on: 표면())
+-    let 탐침 = Vec2(x: 270, y: 350)
++    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
++        .delete, .corner(.topLeft), .corner(.topRight), .rotate,
++    ])
++
++    let 결과 = try #require(placement.hitHandle(at: 탐침, for: .drag))
++    #expect(결과.handle == .corner(.topLeft))
++}
++
++@Test func 밀린_인접_코너가_회전_핸들과_새로_겹치는_지점의_후보는_네_개다() throws {
++    // 결정 8 특성화 테스트 — **결함을 초록으로 고정한다.** 코너 밀기가
++    // 45° 근방에서는 인접 코너의 겹침을 없애지 못할 뿐 아니라, 밀기 방향
++    // (22,−22)가 회전 핸들 오프셋(rotateGap × up ≈ (19.8,−19.8))과 수렴해
++    // 밀기 전에는 없던 코너-회전 겹침을 새로 만든다. 회전 0에서는 반대로
++    // (`초소형프레임()`에서) 겹침을 없앤다 — 즉 정책은 코너-코너만 보고
++    // 코너-회전은 보지 않는다. 나중에 인접 쌍까지 고치는 변경이 있다면 이
++    // 테스트가 **의도적으로 실패해** 그 변경을 알려야 한다.
++    let placement = HandlePlacement(frame: 인접겹침프레임(), edges: [], on: 표면())
++    let 탐침 = Vec2(x: 327.3553, y: 292.6446)
+ 
+     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+-        .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
+-        .edge(.top), .edge(.right), .edge(.bottom), .edge(.left),
++        .delete, .corner(.topLeft), .corner(.topRight), .rotate,
++    ])
++}
++
++// MARK: - D-2 (M7): `팔십팔정사각프레임()` 이전 — 변 하위 순서를 인접 쌍 2회로 고정
++//
++// `EDITOR-6` 사전 이전(사이클 0): 원래 D-2는 초소형 레이어(40×40) 중심 한
++// 탐침에 코너 4 + 변 4 + 삭제 9개가 모이는 것을 이용해 변 하위 순서
++// (top→right→bottom→left)를 한 번에 고정했다. 정책 도입 후에는 그 배치가
++// 구조적으로 불가능해지므로(네 변 동시 히트 ↔ 판정값 ≤ 44 ↔ 변 숨김),
++// 인접한 변 쌍을 두 번 관측해 같은 순서를 고정한다.
++//
++// `Edge.allCases`(선언 순서: left,right,top,bottom)로 대신 쓰는 변이는 아래
++// 두 탐침에서 각각 `[…, .edge(.right), .edge(.top)]`·
++// `[…, .edge(.left), .edge(.bottom)]`이 되어 **둘 다 사망**한다. 다만
++// **순환 회전 변이**(`[bottom,left,top,right]`)는 두 탐침 모두 통과하므로
++// 그것은 `edgeOrder` 리터럴 테스트가 담당한다.
++
++@Test func 팔십팔정사각_박스에서_topRight_코너와_top_right_변이_한_탐침에_모인다() {
++    // 탐침 = 중심 + (22,−22): TR 코너와 top·right 변 중점이 전부 22pt
++    // 이내로 들어온다 — **top이 right보다 앞**임을 고정한다.
++    let placement = HandlePlacement(frame: 팔십팔정사각프레임(), edges: Set(Edge.allCases), on: 표면())
++    let 탐침 = Vec2(x: 292, y: 328)
++
++    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
++        .corner(.topRight), .edge(.top), .edge(.right),
++    ])
++}
++
++@Test func 팔십팔정사각_박스에서_bottomLeft_코너와_bottom_left_변이_한_탐침에_모인다() {
++    // 탐침 = 중심 + (−22,+22): BL 코너와 bottom·left 변 중점이 전부 22pt
++    // 이내로 들어온다 — **bottom이 left보다 앞**임을 고정한다.
++    let placement = HandlePlacement(frame: 팔십팔정사각프레임(), edges: Set(Edge.allCases), on: 표면())
++    let 탐침 = Vec2(x: 248, y: 372)
++
++    #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
++        .corner(.bottomLeft), .edge(.bottom), .edge(.left),
+     ])
+ }
+ 
+ // MARK: - D-3 (특성화): 탐침 (278,358) — BR가 2.83pt로 최근접인데 순서가 이긴다
+ 
+ @Test func 겹침에서는_최근접_핸들이_아니라_orderedHandles_순서가_이긴다() throws {
+-    // 판정은 거리를 **보지 않는다**(BR-4). 손가락이 우하단 코너 정중앙에서
+-    // 2.83pt 거리인데도 드래그는 좌상단 코너를 잡는다 — 좌상단이 2.83pt가
+-    // 아니라 25.5pt 떨어져 있는데도 그렇다.
++    // 판정은 거리를 **보지 않는다**(BR-4). 이 지점은 `.rotate`가 유클리드
++    // 12.17로 최근접인데(좌상단 코너는 20.40) 드래그는 좌상단 코너를 잡는다.
+     //
+     // 이 테스트가 없으면 `hitCandidates(at:).sorted { 거리 }.first { accepts }`
+-    // 변이가 나머지 26건 전부를 통과한다 — 다른 모든 hitHandle 단언은 후보가
+-    // 1개이거나 거리가 정확히 동점이라 정렬해도 순서가 안 바뀐다.
++    // 변이가 살아남는다 — `EDITOR-6`의 코너 밀기 정책이 도입된 뒤에는 이
++    // 지점이 **유일한** 방어선이다(설계서 red-writer 필수 인계 #3).
++    //
++    // 탐침이 (278,358) → (258,314)로 바뀌었다. `EDITOR-6`의 코너 밀기가
++    // `초소형프레임()`(40×40, 판정값 20)에도 적용되면서 좌상단이 (230,320)
++    // → (238,318)로, 우상단이 (310,320) → (302,318)로 이동해 옛 탐침에서는
++    // 후보 구성 자체가 달라진다. 이 픽스처는 회전 0이라 두 밀기 규칙
++    // (`Corner.sign` vs 화면 델타 부호)이 같은 값을 내므로 밀기 자체는 이
++    // 테스트의 관심사가 아니다 — 재조준의 목적은 여전히 "회전 핸들이 더
++    // 가까운데 순서가 이긴다"는 관측 하나뿐이다.
++    //
++    // 후보는 이제 코너 하나(좌상단)와 rotate 둘뿐이다 — 우상단(302,318)은
++    // 탐침에서 dx 44로 미스, 좌하단(238,362)은 dy 48로 미스하기 때문이다.
++    // 코너끼리의 상대 순서는 이 테스트가 못 잰다(후보에 코너가 하나뿐이라)
++    // — 그것은 `영크기프레임()`·`밴드겹침프레임()`이 담당한다.
+     //
+     // 근접 우선이 제품 의도가 되면 그것은 이 단위의 결함이 아니라
+     // `EDITOR-6`·`EDITOR-10`의 새 AC다.
+     let placement = HandlePlacement(frame: 초소형프레임(), edges: [], on: 표면())
+-    let 탐침 = Vec2(x: 278, y: 358)
++    let 탐침 = Vec2(x: 258, y: 314)
+ 
+     #expect(placement.hitCandidates(at: 탐침).map(\.handle) == [
+-        .delete, .corner(.topLeft), .corner(.topRight), .corner(.bottomRight), .corner(.bottomLeft),
++        .delete, .corner(.topLeft), .rotate,
+     ])
+ 
+     let 결과 = try #require(placement.hitHandle(at: 탐침, for: .drag))
+diff --git a/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift b/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
+index 235cda9..d30a459 100644
+--- a/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
++++ b/Packages/SoozipGeometry/Tests/SoozipGeometryTests/HandlePlacementTests.swift
+@@ -45,6 +45,91 @@ private func π조사프레임() -> LayerFrame {
+                rotation: .pi / 2)
+ }
+ 
++// MARK: - EDITOR-6 사전 이전 픽스처 (사이클 0, 프로덕션 0줄 — 정책 도입 전 준비)
++
++/// 판정값 정확히 88 = 176 × 0.5 — `EDITOR-6`의 변 숨김 임계값 **경계**다.
++/// 경계는 이전 상태이므로(v4 §5.7이 `< 88pt`) 변 핸들이 **있는** 쪽이다.
++///
++/// 변 핸들을 재는 테스트를 여기 두는 이유: 기본 `뒤집기프레임`(200×100)은
++/// 판정값 50이라 `EDITOR-6` 이후 변이 사라져 단언이 통째로 무의미해진다.
++private func 정책밖프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 176, height: 300), rotation: 0)
++}
++
++/// `π조사표면()`(fitScale 0.361111 × zoom 2 = 0.722222)에서 판정값 ≥ 88을 만든다.
++/// 200 × 0.722222 = **144.44**.
++///
++/// **높이만 100 → 250으로 키운다.** left 변 중점은 `toWorld(-w/2, 0)`이라 높이에
++/// 의존하지 않아 기대 좌표 (500,400)이 **글자 그대로 유지**된다. 폭을 건드리면
++/// 그 값이 움직여 "변끼리 뒤바뀜" 변이를 죽이던 단언을 다시 써야 한다.
++private func π조사프레임_변포함() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 500, y: 500),
++               size: Size2(width: 200, height: 250), rotation: .pi / 2)
++}
++
++// MARK: - EDITOR-6 사이클 1 전용 픽스처 (변 핸들 숨김, 88)
++//
++// 이 사이클은 코너 밀기(56)를 구현하지 않는다 — 아래 픽스처는 전부
++// `box.edgeHandles`/`placement.edges`/`orderedHandles` 세 관측면만 잰다.
++// 좌표는 오케스트레이터가 `toScreen(p) = (p.x/2, p.y/2 + 12.5)`로 전량
++// 재검산한 이진 정확 값이다.
++
++/// 판정값 정확히 70 = 140 × 0.5 — 56 이상 88 미만 구간(FR-3의 절반: 변만
++/// 숨고 코너는 이 사이클에서 다루지 않는다). AC-2.
++private func 변핸들숨김프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 140, height: 300), rotation: 0)
++}
++
++/// 판정값 정확히 56 = 112 × 0.5. `EDITOR-6` 사이클 2의 코너 밀기 임계값과
++/// 같은 숫자지만, 이 사이클은 코너 밀기를 구현하지 않으므로 여기서는
++/// "56 < 88이라 변 숨김 게이트가 이미 닫혀 있다"만 잰다(AC-4의 변 부분).
++private func 코너밀기경계프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 112, height: 300), rotation: 0)
++}
++
++/// 판정값 200 = 400 × 0.5 — 88을 크게 넘는 대형 레이어. `정책밖프레임()`
++/// (경계 정확히 88)만으로는 잡지 못하는 "임계값 부근에서만 우연히 통과"
++/// 변이의 방어선이다(AC-8).
++private func 대형정책밖프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 400, height: 400), rotation: 0)
++}
++
++/// AC-11(변 부분) 전용 — 줌 400% 표면. `HandleHitTestTests.swift`의
++/// `확대표면()`과 같은 값이다(EDITOR-5가 "세 배율에서 TL이 같은 화면
++/// 좌표에 오도록" 역산해 둔 팬 지점).
++private func 줌400표면() -> CanvasSurface {
++    표면().zoomed(to: 4).centered(on: Vec2(x: 465, y: 637.5))
++}
++
++/// AC-11(변 부분) 전용 — 줌 50% 표면. `HandleHitTestTests.swift`의
++/// `축소표면()`과 같은 값이다.
++private func 줌50표면() -> CanvasSurface {
++    표면().zoomed(to: 0.5).centered(on: Vec2(x: 640, y: 725))
++}
++
++/// AC-11(변 부분)의 **유일한** 프레임 — PRD가 명시한 "동일 논리 프레임"
++/// (중심 (540,675) · 200×100 · 회전 0)이다. `줌400표면()`·`줌50표면()`
++/// 둘 다에 이 프레임 하나를 그대로 넣는다.
++///
++/// | 표면 | scale | TL 화면 | 판정값 |
++/// |---|---|---|---|
++/// | `줌400표면()` | 2.0 | **(220, 325)** | **200** |
++/// | `줌50표면()` | 0.25 | **(220, 325)** | **25** |
++///
++/// **두 배율에서 TL이 정확히 같은 화면 좌표에 온다.** 이게 이 픽스처의
++/// 요점이다 — 화면 위치가 완전히 동일한데 정책 상태(변 유무)만 갈리므로,
++/// 차이를 만드는 것이 오직 `surface.scale`임이 격리된다. 판정값 계산에서
++/// `surface.scale`을 빼고 `shortSide`만 쓰는 변이라면 둘 다 논리 100으로
++/// 고정돼 두 배율이 **같은 정책 상태**가 되어 이 테스트가 죽인다.
++private func 줌비교대상프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675),
++               size: Size2(width: 200, height: 100), rotation: 0)
++}
++
+ // MARK: - AC-9: π/2에서 네 코너 전부, 양 성분
+ 
+ @Test func π_2_회전에서_네_코너가_전부_정확한_화면_좌표에_온다() throws {
+@@ -74,8 +159,14 @@ private func π조사프레임() -> LayerFrame {
+ @Test func π_2_회전에서_left_변_핸들이_변_중점의_화면_좌표에_온다() throws {
+     // shape처럼 4변을 전부 허용한 경우. left는 다른 세 변과 좌표가 다 달라서
+     // 변끼리 뒤바뀌는(예: right 값을 left에 넣는) 변이를 잡는다.
++    //
++    // `π조사프레임_변포함()`을 쓴다 — 기본 `π조사프레임()`은 shortSide 100
++    // (짧은 변은 height)이라 판정값 72.22로 `EDITOR-6` 이후 변이 사라져 이
++    // 테스트가 통째로 무의미해진다. 높이만 250으로 키운 별도 픽스처로
++    // 옮겨 판정값을 144.44로 올린다(설계서 「기존 테스트 영향 처리」 참조).
++    // 기대 좌표 (500,400)은 높이 변경과 무관해 그대로 유지된다.
+     let surface = π조사표면()
+-    let frame = π조사프레임()
++    let frame = π조사프레임_변포함()
+     let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+     let box = try #require(placement.box)
+ 
+@@ -230,8 +321,12 @@ private func π조사프레임() -> LayerFrame {
+ // MARK: - orderedHandles 전체 시퀀스
+ 
+ @Test func orderedHandles는_삭제_코너_회전_변_순서다_변_4개() {
++    // `정책밖프레임()`(176×300, 판정값 88)을 쓴다 — 기본 `뒤집기프레임`
++    // (200×100)은 판정값 50이라 `EDITOR-6` 이후 변이 사라져 이 단언이
++    // 통째로 무의미해진다. 이 테스트는 배열 조립 순서만 재므로 어느
++    // 정책 밖 프레임을 쓰든 결과는 같다.
+     let surface = 표면()
+-    let frame = 뒤집기프레임(topY: 175)
++    let frame = 정책밖프레임()
+     let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
+ 
+     let 순서 = placement.orderedHandles.map { $0.handle }
+@@ -346,8 +441,11 @@ private func π조사프레임() -> LayerFrame {
+ // MARK: - edges 파생
+ 
+ @Test func edges_프로퍼티는_edgeHandles에서_파생된다() {
++    // `정책밖프레임()`을 쓴다 — 기본 `뒤집기프레임`(판정값 50)은 `EDITOR-6`
++    // 이후 `edges`가 항상 빈 집합이 되어 이 테스트가 재려는 "허용 집합이
++    // edgeHandles를 통해 그대로 파생된다"는 관측이 무의미해진다.
+     let surface = 표면()
+-    let frame = 뒤집기프레임(topY: 175)
++    let frame = 정책밖프레임()
+     let 허용 = Set<Edge>([.top, .left])
+     let placement = HandlePlacement(frame: frame, edges: 허용, on: surface)
+ 
+@@ -373,3 +471,399 @@ private func π조사프레임() -> LayerFrame {
+     #expect(box.rotate.y > 0)
+     #expect(isClose(box.rotate.y, 68))
+ }
++
++// MARK: - EDITOR-6 사이클 1: 변 핸들 숨김 (판정값 = shortSide × scale, 임계값 88)
++//
++// 코너 밀기(56)는 사이클 2 — AC-3·5·6·7·9·10·13은 여기서 다루지 않는다.
++
++@Test func 판정값이_정확히_88이면_변_핸들이_넷_다_있다() throws {
++    // 경계는 이전 상태다 — v4 §5.7 원문이 `< 88pt`를 명시하므로 정확히
++    // 88이면 변이 "있는" 쪽이다. `flipThreshold`의 `<= 40`·`hitSize`의
++    // `<= 22`가 세운 "경계 포함" 관례와 이 상수만 **반대**라서, 그것을
++    // 모르면 `<=`로 "통일"하는 변경이 자연스러워 보인다 — 이 테스트가
++    // 그 변이(부등호 반전)를 죽인다.
++    //
++    // `정책밖프레임()`(176×300)을 재사용한다 — 사이클 0에서 이미 이
++    // 픽스처가 "정책 도입 전 준비"로 옮겨져 있다. 이 테스트는 정책 도입
++    // 전에도 통과한다(변이 항상 존재하므로) — 진짜 RED는 아래 두 테스트다.
++    let surface = 표면()
++    let frame = 정책밖프레임()
++    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(box.edgeHandles.count == 4)
++    #expect(isClose(box.topLeft.x, 226))
++    #expect(isClose(box.topLeft.y, 275))
++}
++
++@Test func 판정값이_88_미만이면_변_핸들이_전부_사라진다() throws {
++    // 판정값 70 (56 이상 88 미만) — FR-1의 핵심 RED다. `box.edgeHandles`·
++    // `placement.edges`·`orderedHandles` 세 파생 경로 모두에서 변이
++    // 사라지는지 잰다(설계서 testability: "showsEdges 게이트 — 세 관측면
++    // 전부"). 하나만 재면, 예컨대 `edgeHandles`는 걸러도 `orderedHandles`
++    // 조립부가 여전히 옛 배열을 이어붙이는 변이를 놓친다.
++    let surface = 표면()
++    let frame = 변핸들숨김프레임()
++    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(box.edgeHandles.isEmpty)
++    #expect(placement.edges.isEmpty)
++    #expect(placement.orderedHandles.count == 6)
++    #expect(placement.orderedHandles.allSatisfy {
++        if case .edge = $0.handle { return false }
++        return true
++    })
++}
++
++@Test func 판정값이_56이면_변_핸들은_이미_숨어_있다() throws {
++    // 이 사이클(사이클 1)은 코너 밀기(56)를 구현하지 않는다 — `topLeft`는
++    // 다음 사이클의 관측 대상이므로 여기서 재지 않는다. 56 < 88이라 변
++    // 숨김 게이트는 이미 닫혀 있어야 하고, 그것만이 이 테스트의 대상이다
++    // (AC-4의 변 부분).
++    let surface = 표면()
++    let frame = 코너밀기경계프레임()
++    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(box.edgeHandles.isEmpty)
++}
++
++@Test func 판정값이_88을_크게_넘으면_변_핸들_10개_전부_존재한다() throws {
++    // `정책밖프레임()`(판정값 정확히 88)만으로는 "경계 부근에서만 우연히
++    // 통과"하는 변이(예: `>=` 를 `==`로 바꾸는 변이)를 못 죽인다. 400×400
++    // (판정값 200)으로 임계값에서 멀찍이 떨어진 지점에서 회귀 없음(FR-4)을
++    // 확인한다. 이 테스트도 정책 도입 전부터 통과한다 — 부등호 반전
++    // 변이를 죽이는 방어선이지, RED 신호 자체는 아니다.
++    let surface = 표면()
++    let frame = 대형정책밖프레임()
++    let placement = HandlePlacement(frame: frame, edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(box.edgeHandles.count == 4)
++    #expect(placement.orderedHandles.count == 10)
++    #expect(isClose(box.topLeft.x, 170))
++    #expect(isClose(box.topLeft.y, 250))
++}
++
++@Test func 같은_논리_프레임도_줌만_바꾸면_변_핸들_유무가_달라진다() throws {
++    // 결정 1(화면 pt)의 핵심 관측 — **같은 프레임**(줌비교대상프레임(),
++    // 중심 (540,675))을 두 표면(400%·50%)에 그대로 넣는다.
++    //
++    // 두 표면은 같은 논리 프레임의 좌상단을 **밀기 전 기준으로는 똑같이
++    // 화면 (220,325)에 놓도록** 역산돼 있다(`EDITOR-5`의 `확대표면()`·
++    // `축소표면()`과 같은 값). 그래서 이 쌍은 위치가 아니라 **`surface.scale`
++    // 하나만** 갈린다 — 판정값에서 `scale`을 빼면 둘 다 논리 100으로
++    // 고정돼 같은 상태가 되고 400% 쪽 `count == 4`가 깨진다.
++    //
++    // **50%의 좌상단은 단언하지 않는다.** 판정값 25는 코너 밀기 구간
++    // (< 56)이라 다음 사이클에서 밀린 좌상단 (198,303)으로 이동한다 —
++    // 여기서 (220,325)로 고정하면 그 사이클이 이 테스트를 깨뜨린다.
++    // 좌상단 이동은 코너 밀기 AC가 잰다.
++    let 확대box = try #require(
++        HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: 줌400표면()).box
++    )
++    #expect(확대box.edgeHandles.count == 4)
++    #expect(isClose(확대box.topLeft.x, 220))
++    #expect(isClose(확대box.topLeft.y, 325))
++
++    let 축소placement = HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: 줌50표면())
++    #expect(축소placement.edges.isEmpty)
++}
++
++@Test func edgeHideThreshold_상수는_88이다() {
++    // `hitSize`(44)에서 파생하지 않는 독립 리터럴이어야 한다(BR-4). 지금
++    // 상수 자체가 없어 이 참조 하나만으로 파일 전체가 컴파일에 실패한다 —
++    // 이것이 이 사이클의 1차 RED 신호다(Swift에는 NoSuchMethodError가
++    // 없으므로 컴파일 에러가 그 역할을 한다).
++    #expect(HandlePlacement.edgeHideThreshold == 88)
++}
++
++// MARK: - EDITOR-6 사이클 2: 코너 밀기 (판정값 < 56, 화면 델타 부호 + 성분별 폴백)
++//
++// `cornerPushThreshold`·`cornerPush` 두 상수가 아직 소스에 없다 — 이 섹션의
++// 어떤 테스트든 참조하는 순간 파일 전체가 컴파일에 실패한다. 그것이 이
++// 사이클의 1차 RED 신호다(Swift에는 NoSuchMethodError가 없다).
++
++// MARK: - 사이클 2 전용 픽스처
++
++/// 판정값 정확히 50 = 100 × 0.5. 코너 밀기가 발동하는 표준 픽스처
++/// (AC-5·6·9). 밀림 전 네 코너는 (245,275)·(295,275)·(295,425)·(245,425)다.
++private func 코너밀림프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 100, height: 300), rotation: 0)
++}
++
++/// 판정값 정확히 40 = 80 × 0.5, 정사각형. `edges: []`인 종류(photo 등)에도
++/// 코너 정책이 걸리는지 재는 AC-7 전용 픽스처다.
++private func 변없는초소형프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 80, height: 80), rotation: 0)
++}
++
++/// `코너밀림프레임()`과 같은 크기(100×300)를 45°로 돌린 것 — AC-10. 판정값이
++/// 회전에 무관함(결정 2)과 밀기 방향이 `Corner.sign`이 아니라 화면 델타
++/// 부호임(결정 3-정정)을 동시에 고정하는 유일한 무리수 좌표 픽스처다.
++private func 사십오도코너밀림프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 100, height: 300), rotation: .pi / 4)
++}
++
++/// 크기 (0,0) — AC-13. 네 코너가 화면 중심(밀기 기준점)과 완전히 겹쳐 델타가
++/// (0,0)이 된다. **주의**: 이 픽스처는 "전체 벡터가 (0,0)일 때만 폴백"하는
++/// 변이도 통과시킨다(두 성분이 동시에 0이라서) — 그 변이의 유일한 증인은
++/// 아래 `영폭프레임()`·`영높이프레임()`이다.
++private func 영크기프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 0), rotation: 0)
++}
++
++/// 88×300을 π(180°)로 돌린 것 — 결정 3-정정의 핵심 방어선 중 하나(다른
++/// 둘은 AC-10·인접겹침프레임, `HandleHitTestTests.swift` 참조). `Corner.sign`
++/// (로컬 부호)을 화면 델타로 그대로 쓰는 변이는 밀린 좌상단·우상단을
++/// **정확히 같은 점** (270,403)으로 만들어 간격을 88 → 0으로 무너뜨린다 —
++/// 겹침을 막으려는 정책이 없던 겹침을 만드는 최악의 사례다. 화면 델타
++/// 부호(채택안)는 반대로 간격을 88로 유지한다.
++private func 반회전프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 88, height: 300), rotation: .pi)
++}
++
++/// 폭이 정확히 0 — 좌상단·우상단의 화면 x 델타가 0이 된다(y 델타는 −75로
++/// 0이 아니다). "전체 벡터가 (0,0)일 때만 폴백"하는 변이는 x축 폴백을
++/// 건너뛰어 두 코너를 한 점으로 붕괴시킨다. `영크기프레임()`(AC-13)은 두
++/// 성분이 동시에 0이라 이 변이를 통과시키므로, 성분별 폴백의 증인은 이
++/// 픽스처와 `영높이프레임()` 둘뿐이다.
++private func 영폭프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 0, height: 300), rotation: 0)
++}
++
++/// 높이가 정확히 0 — `영폭프레임()`의 y축 짝. 좌상단·좌하단의 화면 y 델타가
++/// 0이 되고(x는 −75로 0이 아니다), "전체 벡터" 폴백 변이는 둘을 y = 350 한
++/// 점으로 붕괴시킨다.
++private func 영높이프레임() -> LayerFrame {
++    LayerFrame(center: Vec2(x: 540, y: 675), size: Size2(width: 300, height: 0), rotation: 0)
++}
++
++// MARK: - AC-3: 56~88 구간에서는 코너가 밀리지 않는다
++
++@Test func 판정값이_70이면_56_이상이라_코너가_밀리지_않는다() throws {
++    // `변핸들숨김프레임()`(140×300, 판정값 70)을 재사용한다 — 사이클 1은 변
++    // 숨김만 쟀고 코너 좌표는 손대지 않았다. (235,275)는 밀기 전 원래
++    // 좌표이며, `cornerPushThreshold`가 도입된 뒤에도 56~88 구간에서는
++    // 그대로여야 한다(FR-3).
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 변핸들숨김프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 235))
++    #expect(isClose(box.topLeft.y, 275))
++}
++
++// MARK: - AC-4: 판정값이 정확히 56이면 코너가 밀리지 않는다
++
++@Test func 판정값이_정확히_56이면_코너가_밀리지_않는다() throws {
++    // 경계는 이전 상태다 — v4 §5.7이 `< 56pt`를 명시하므로 정확히 56이면
++    // 코너가 "밀리지 않는" 쪽이다(BR-1). **56 경계의 단독 방어선**이다 — 88
++    // 경계는 정책밖프레임·B-3·C-6 등 6중 방어선이 있지만 56은 이 테스트
++    // 하나뿐이다(설계서 testability "88 경계는 6중, 56 경계는 단독"). `<`를
++    // `<=`로 뒤집는 변이는 여기서만 잡힌다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 코너밀기경계프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 242))
++    #expect(isClose(box.topLeft.y, 275))
++}
++
++// MARK: - AC-5·6·9: 판정값 50 — 코너 밀기 + 삭제 동행 + 회전 무영향
++
++@Test func 판정값이_50이면_네_코너가_화면_축_방향으로_22pt씩_밀린다() throws {
++    // AC-5. 밀림 전 네 코너는 (245,275)·(295,275)·(295,425)·(245,425)다
++    // (표면() 중심 (540,675) 기준). 화면 중심에서 각 코너로 향하는 델타
++    // 부호대로 22pt씩 벌어진다. 네 코너·양 성분을 전부 재야 코너가
++    // 뒤바뀌는 변이(예: bottomRight에 topRight 값을 밀어 넣는)를 잡는다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    let 기대 = [
++        (box.topLeft, Vec2(x: 223, y: 253)),
++        (box.topRight, Vec2(x: 317, y: 253)),
++        (box.bottomRight, Vec2(x: 317, y: 447)),
++        (box.bottomLeft, Vec2(x: 223, y: 447)),
++    ]
++    for (실제, 기대값) in 기대 {
++        #expect(isClose(실제.x, 기대값.x))
++        #expect(isClose(실제.y, 기대값.y))
++    }
++}
++
++@Test func 코너가_밀리면_삭제_핸들도_밀린_좌상단을_그대로_따라간다() throws {
++    // AC-6. `Box.delete = { topLeft }` 계산 프로퍼티라 코너가 밀린 뒤에도
++    // 어긋나지 않아야 한다(FR-5) — 밀기를 topLeft에만 적용하고 delete를
++    // 별도 저장 프로퍼티로 두는 변이가 있다면 여기서 두 값이 갈라진다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.delete.x, box.topLeft.x))
++    #expect(isClose(box.delete.y, box.topLeft.y))
++    #expect(isClose(box.delete.x, 223))
++    #expect(isClose(box.delete.y, 253))
++}
++
++@Test func 코너가_밀려도_회전_핸들은_상단_변_중점_기준을_그대로_쓴다() throws {
++    // AC-9. 회전 핸들은 상단 변 중점 (270,275)에서 28pt 위인 (270,247)이어야
++    // 한다(FR-6). 밀린 좌상단(223,253)·우상단(317,253)의 중점 (270,253)을
++    // 기준으로 삼는 변이는 대신 (270,225)를 낸다 — 22pt 차이가 이 두 구현을
++    // 가르는 유일한 방어선이다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.rotate.x, 270))
++    #expect(isClose(box.rotate.y, 247))
++}
++
++// MARK: - AC-7: 변 핸들이 없는 종류도 코너는 밀린다 (종류 축과 크기 축의 독립성)
++
++@Test func 변_핸들이_없는_종류도_코너는_밀린다() throws {
++    // AC-7. `edges: []`로 photo·stamp·drawing 같은 종류를 흉내낸다(FR-8).
++    // 좌상단·우하단을 재고 개수(6 = 삭제1+코너4+회전1)까지 확인해 "변이
++    // 아예 없으니 orderedHandles도 비어야 한다"는 잘못된 결합을 만드는
++    // 변이를 잡는다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 변없는초소형프레임(), edges: [], on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 228))
++    #expect(isClose(box.topLeft.y, 308))
++    #expect(isClose(box.bottomRight.x, 312))
++    #expect(isClose(box.bottomRight.y, 392))
++    #expect(placement.orderedHandles.count == 6)
++}
++
++// MARK: - AC-10: 45° 회전 — 판정값 불변 + 화면 델타 부호 밀기 (결정 2·3-정정)
++
++@Test func 사십오도_회전에서도_판정값은_불변이고_밀기는_화면_델타_부호를_따른다() throws {
++    // AC-10 + 결정 3-정정의 핵심 증거. 밀기 전 좌상단은 화면 (305.3553,
++    // 279.2893)이고 박스 화면 중심 (270,350) 기준 델타는 (+35.3553,
++    // −70.7107)이다 — 부호 (+1,−1)로 밀리면 (327.3553,257.2893)이 된다.
++    //
++    // 검산 1(결정 2): 화면 축 바운딩 박스로 짧은 변을 쟀다면 45°에서
++    // (50+150)·√2 × 0.5 ≈ 141.4 > 88이 되어 정책이 아예 발동하지 않았을
++    // 것이다 — 이 테스트가 통과한다는 사실 자체가 `Size2.shortSide`가
++    // **로컬** 값임을 증명한다.
++    //
++    // 검산 2(결정 3-정정): `Corner.sign`(로컬 부호, x=−1)을 그대로 밀기에
++    // 쓰면 x가 −22 되어 (283.3553, 257.2893)을 낸다 — 이 테스트는 그 값과
++    // x축 44pt 차이로 갈린다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 사십오도코너밀림프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 327.3553))
++    #expect(isClose(box.topLeft.y, 257.2893))
++}
++
++// MARK: - AC-11(코너 부분): 줌 50%에서는 판정값이 25가 되어 코너가 밀린다
++
++@Test func 줌_50_퍼센트에서는_판정값이_25가_되어_코너가_밀린다() throws {
++    // AC-11의 코너 밀기 절반(사이클 2). 사이클 1은 같은 표면 쌍에서
++    // `edges.isEmpty`만 쟀고 좌상단은 "다음 사이클이 잰다"며 비워 뒀다
++    // (`같은_논리_프레임도_줌만_바꾸면_변_핸들_유무가_달라진다` 주석 참조).
++    // 밀기 전 좌상단은 두 배율 모두 화면 (220,325)에 오도록 표면이
++    // 역산돼 있다 — 여기서는 판정값 25(<56)로 코너가 밀려 박스 화면 중심
++    // (245,337.5) 기준 델타 (−25,−12.5)만큼 22pt씩 더 밀린 (198,303)이어야
++    // 한다.
++    let surface = 줌50표면()
++    let placement = HandlePlacement(frame: 줌비교대상프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 198))
++    #expect(isClose(box.topLeft.y, 303))
++}
++
++// MARK: - AC-13: 크기 0에서 네 코너가 Corner.sign으로 폴백한다
++
++@Test func 크기_0에서_네_코너가_모두_Corner_sign_방향으로_폴백한다() throws {
++    // AC-13. 크기가 0이면 네 코너가 전부 화면 중심(밀기 기준점)과 겹쳐
++    // 델타가 (0,0)이 된다 — 폴백이 없으면 네 점이 한 점으로 뭉친다. 어떤
++    // 좌표에도 NaN이 없는지도 함께 잰다(BR-3).
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 영크기프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    let 기대 = [
++        (box.topLeft, Vec2(x: 248, y: 328)),
++        (box.topRight, Vec2(x: 292, y: 328)),
++        (box.bottomRight, Vec2(x: 292, y: 372)),
++        (box.bottomLeft, Vec2(x: 248, y: 372)),
++    ]
++    for (실제, 기대값) in 기대 {
++        #expect(isClose(실제.x, 기대값.x))
++        #expect(isClose(실제.y, 기대값.y))
++        #expect(실제.x.isFinite && 실제.y.isFinite)
++    }
++}
++
++// MARK: - AC-14: cornerPushThreshold·cornerPush 리터럴
++
++@Test func cornerPushThreshold와_cornerPush_상수는_56과_22다() {
++    // `hitSize`에서 파생하지 않는 독립 리터럴이어야 한다(BR-4). 지금 두
++    // 상수 모두 소스에 없어 이 참조만으로 파일 전체가 컴파일에 실패한다 —
++    // 이것이 이 사이클의 1차 RED 신호다.
++    #expect(HandlePlacement.cornerPushThreshold == 56)
++    #expect(HandlePlacement.cornerPush == 22)
++}
++
++// MARK: - 결정 3-정정: 회전 π — Corner.sign 채택 시 간격이 0으로 무너지는 반례
++
++@Test func 회전_180도_88폭_레이어에서_좌상단과_우상단이_88pt_간격을_유지한다() throws {
++    // 결정 3-정정의 핵심 방어선(88×300·π). `Corner.sign`(로컬 부호)을 화면
++    // 델타로 그대로 쓰는 변이는 밀린 좌상단·우상단을 **정확히 같은 점**
++    // (270,403)으로 만들어 간격을 88 → 0으로 무너뜨린다 — 겹침을 막으려는
++    // 정책이 없던 겹침을 만드는 최악의 사례다. 화면 델타 부호(채택안)는
++    // 반대로 간격을 88로 유지한다.
++    //
++    // 이 변이를 죽이는 것은 이 테스트 하나만이 아니다 — AC-10(x가 44pt
++    // 어긋난다)과 `HandleHitTestTests.swift`의 결정 8 특성화 테스트도 각각
++    // 다른 각도에서 같은 변이를 죽인다(설계서 red-writer 필수 인계 #2).
++    // 셋 다 필요하다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 반회전프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 314))
++    #expect(isClose(box.topLeft.y, 447))
++    #expect(isClose(box.topRight.x, 226))
++    #expect(isClose(box.topRight.y, 447))
++}
++
++// MARK: - 성분별 폴백의 증인 (2회차 설계 감점을 메우는 3회차 신설 픽스처)
++
++@Test func 폭이_0이면_x_축만_Corner_sign으로_폴백해_좌상단과_우상단이_갈라진다() throws {
++    // 성분별 폴백의 증인 중 하나. `영크기프레임()`(AC-13)은 두 성분이
++    // 동시에 0이라 "전체 벡터가 (0,0)일 때만 폴백"하는 변이도 통과시킨다.
++    // 이 픽스처는 x 델타만 0이라(y는 −75로 0이 아님) 그 변이가 x 밀기를
++    // 0으로 만들어 좌상단·우상단을 (270,253) 한 점으로 붕괴시킨다 —
++    // 성분별 폴백(채택안)만이 이 둘을 (248,253)·(292,253)으로 갈라놓는다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 영폭프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 248))
++    #expect(isClose(box.topLeft.y, 253))
++    #expect(isClose(box.topRight.x, 292))
++    #expect(isClose(box.topRight.y, 253))
++}
++
++@Test func 높이가_0이면_y_축만_Corner_sign으로_폴백해_좌상단과_좌하단이_갈라진다() throws {
++    // `영폭프레임()`의 y축 짝. 높이가 0이라 좌상단·좌하단의 화면 y 델타가
++    // 0이 되고(x는 −75로 0이 아니다), "전체 벡터" 폴백 변이는 둘을 y = 350
++    // 한 점으로 붕괴시킨다.
++    let surface = 표면()
++    let placement = HandlePlacement(frame: 영높이프레임(), edges: Set(Edge.allCases), on: surface)
++    let box = try #require(placement.box)
++
++    #expect(isClose(box.topLeft.x, 173))
++    #expect(isClose(box.topLeft.y, 328))
++    #expect(isClose(box.bottomLeft.x, 173))
++    #expect(isClose(box.bottomLeft.y, 372))
++}
+diff --git a/Packages/SoozipLayout/Sources/SoozipLayout/SelectionHandles.swift b/Packages/SoozipLayout/Sources/SoozipLayout/SelectionHandles.swift
+index 11b64d2..1632462 100644
+--- a/Packages/SoozipLayout/Sources/SoozipLayout/SelectionHandles.swift
++++ b/Packages/SoozipLayout/Sources/SoozipLayout/SelectionHandles.swift
+@@ -8,11 +8,18 @@ extension LayerKind {
+     /// 그건 되돌리는 법을 알기 전까지 사용자가 실수로 인식하지 못하는 훼손이다.
+     /// `text`가 좌우뿐인 것은 폭이 줄바꿈 지점이고 높이는 내용이 정하기 때문이다.
+     ///
+-    /// **종류 축의 문지기이지 핸들 존재의 전부가 아니다.** `EDITOR-6`이 화면 짧은
+-    /// 변 88pt 미만에서 변 핸들을 걷어내고 56pt 미만에서 코너를 박스 밖으로 미는
+-    /// **크기 축 필터**를 `HandlePlacement.init` 안에 얹는다. "유일한 문지기"라고
+-    /// 적으면 그 시점에 이 주석이 거짓이 되고, 다음 사람은 크기 필터를 찾지 못한 채
+-    /// 이 집합만 고친다.
++    /// **종류 축의 문지기이지 핸들 존재의 전부가 아니다.** `HandlePlacement.init`의
++    /// `screenShortSide`(= `frame.size.shortSide × surface.scale`)가
++    /// `edgeHideThreshold`(88) 미만이면 이 프로퍼티가 무엇을 반환하든 변 핸들이
++    /// 전부 사라진다 — **크기 축이 실제로 얹혔다.**
++    ///
++    /// 따라서 **`resizableEdges`는 종류 축만 답한다.** 실제로 그려지고 잡히는 변은
++    /// `HandlePlacement.edges`이며, **두 축이 거기서 합류한다.**
++    ///
++    /// **`placement.edges`가 비었다고 이 값이 비었다고 결론짓지 마라** — 어느 축이
++    /// 잘랐는지는 값만으로 구별되지 않는다. `SelectionTests`의
++    /// `크기_축이_코너를_밀면_종류_축이_허용한_변이_보이지_않는다`가 그 합류를
++    /// 고정한다(도형은 네 변을 허용하는데 판정값 50에서 `edges`가 빈다).
+     public var resizableEdges: Set<Edge> {
+         switch self {
+         case .photo, .stamp, .drawing: return []
+diff --git a/Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift b/Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift
+index 4611279..67ac765 100644
+--- a/Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift
++++ b/Packages/SoozipLayout/Tests/SoozipLayoutTests/SelectionTests.swift
+@@ -322,6 +322,12 @@ private func 펜() -> Layer {
+     // 상수 스텁을 쓰면 "항상 entries[0]을 넘긴다"는 변이가 무증상이다.
+     // kind마다 다른 크기를 내는 스텁을 쓰고, 첫 번째가 아닌 인덱스 3(도장)을
+     // 선택해 그 레이어의 스텁 값이 실제로 박스 크기에 반영되는지 좌표로 잰다.
++    //
++    // `EDITOR-6` 사전 이전(사이클 0): 도장 스텁을 60×40 → **120×100**으로
++    // 키웠다. `표면()`은 fitScale 1.0이라 60×40은 판정값 40으로 `EDITOR-6`의
++    // 두 임계값(56·88) 아래다. 120×100이면 판정값 100으로 정책 밖이다.
++    // **비정사각을 유지**한다 — 폭·높이 뒤바꿈 변이가 계속 죽어야 한다. 다른
++    // kind의 스텁 값(10·20·30)은 이 테스트에서 선택되지 않으므로 그대로 둔다.
+     let layers: [Layer] = [사진(), 텍스트(), 펜(), 도장(), 도형(4)]
+     var store = LayerStore(layers)
+     store.select(store.entries[3].id)   // 도장: transform x=130, y=200
+@@ -330,7 +336,7 @@ private func 펜() -> Layer {
+         switch layer.kind {
+         case .photo: return Size2(width: 10, height: 10)
+         case .text: return Size2(width: 20, height: 20)
+-        case .stamp: return Size2(width: 60, height: 40)
++        case .stamp: return Size2(width: 120, height: 100)
+         case .drawing: return Size2(width: 30, height: 30)
+         case .shape: return Size2(width: 999, height: 999)
+         }
+@@ -339,11 +345,11 @@ private func 펜() -> Layer {
+     let placement = store.selectionHandles(on: 표면(), baseSizeOf: stub)
+     let box = try #require(placement.box)
+ 
+-    // 도장 스텁(60×40), scale 1 → topLeft(100,180)·bottomRight(160,220).
+-    #expect(isClose(box.topLeft.x, 100))
+-    #expect(isClose(box.topLeft.y, 180))
+-    #expect(isClose(box.bottomRight.x, 160))
+-    #expect(isClose(box.bottomRight.y, 220))
++    // 도장 스텁(120×100), scale 1 → topLeft(70,150)·bottomRight(190,250).
++    #expect(isClose(box.topLeft.x, 70))
++    #expect(isClose(box.topLeft.y, 150))
++    #expect(isClose(box.bottomRight.x, 190))
++    #expect(isClose(box.bottomRight.y, 250))
+ }
+ 
+ // MARK: - frame(baseSize:) 경유 검증
+@@ -372,3 +378,42 @@ private func 펜() -> Layer {
+     #expect(isClose(box.bottomLeft.x, 400))
+     #expect(isClose(box.bottomLeft.y, 300))
+ }
++
++// MARK: - EDITOR-6 결정 7: 종류 축과 크기 축의 합류
++
++@Test func 크기_축이_코너를_밀면_종류_축이_허용한_변이_보이지_않는다() throws {
++    // `LayerKind.shape.resizableEdges`는 네 변을 허용한다(위 「resizableEdges
++    // 리터럴 표」가 고정). 하지만 `HandlePlacement.edges`는 크기 축(짧은 변
++    // × surface.scale)이 별도로 게이트한다 — 종류가 변을 허용해도 레이어가
++    // 충분히 작으면(여기서는 실효 50×50, `표면()`이 fitScale 1.0이라 판정값
++    // 정확히 50 < 56) `edges`가 **빈 집합**이 된다. 두 축이 여기서 만난다.
++    //
++    // `placement.edges == kind.resizableEdges` 형태로는 이 합류를 재지 못한다
++    // — 그 형태는 `resizableEdges`가 무엇을 반환하든 자기 자신과 비교하는
++    // 동어반복이라 늘 초록이다(`도형은_네_변_모두_리사이즈_핸들을_가진다`가
++    // 이미 이 함정을 거부했다, `SelectionTests:185` 주석 참조). 리터럴로
++    // 빈 집합을 직접 단언한다.
++    //
++    // 판정값이 56 미만이라 코너도 함께 밀린다(FR-2) — `transform.scale`이
++    // `frame(baseSize:)`를 거쳐 실제 화면 크기에 반영되는지까지 좌표로 잰다.
++    // 화면은 항등(fitScale 1.0)이라 밀기 전 좌상단은 (475,475), 중심 (500,500)
++    // 기준 델타 (−25,−25)로 (453,453)이 된다. `box.delete`가 밀린 좌상단을
++    // 그대로 따라가는지도 함께 재 FR-5가 크기 축 아래에서도 성립함을 고정한다.
++    let transform = LayerTransform(x: 500, y: 500, scale: 0.5)
++    let shape = Layer.shape(ShapeLayer(kind: .circle, width: 100, height: 100, fill: 0,
++                                       stroke: nil, strokeWidth: 0, transform: transform))
++    var store = LayerStore([shape])
++    store.select(store.entries[0].id)
++
++    let placement = store.selectionHandles(on: 표면()) { _ in Size2(width: 999, height: 999) }
++    let box = try #require(placement.box)
++
++    #expect(placement.edges.isEmpty)
++    #expect(placement.orderedHandles.count == 6)
++    #expect(isClose(box.topLeft.x, 453))
++    #expect(isClose(box.topLeft.y, 453))
++    #expect(isClose(box.bottomRight.x, 547))
++    #expect(isClose(box.bottomRight.y, 547))
++    #expect(isClose(box.delete.x, box.topLeft.x))
++    #expect(isClose(box.delete.y, box.topLeft.y))
++}
