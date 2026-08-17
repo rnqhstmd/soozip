@@ -1,0 +1,16 @@
+A  .dev/feat-editor-resize/baseline-test.log
+A  .dev/feat-editor-resize/codemap.md
+A  .dev/feat-editor-resize/design-draft.md
+A  .dev/feat-editor-resize/design.md
+A  .dev/feat-editor-resize/prd.md
+A  .dev/feat-editor-resize/rgr-t0-porcelain.txt
+A  .dev/feat-editor-resize/rgr-t1-porcelain.txt
+A  .dev/feat-editor-resize/rgr-t2-porcelain.txt
+A  .dev/feat-editor-resize/rgr-t3-porcelain.txt
+A  .dev/feat-editor-resize/rgr-t4-porcelain.txt
+A  .dev/feat-editor-resize/state.md
+ M Packages/SoozipGeometry/Tests/SoozipGeometryTests/ResizeAnchorTests.swift
+M  context/editor/status.md
+?? .dev/feat-editor-resize/diff.txt
+?? .dev/feat-editor-resize/rgr-t5-porcelain.txt
+?? .dev/feat-editor-resize/trust-ledger.md

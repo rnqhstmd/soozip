@@ -1,9 +1,9 @@
 ```yaml
-phase: implement
+phase: complete
 status: in_progress
 pipeline: gx-tdd
-verify-status: pending
-verify-fingerprint: ""
+verify-status: passed
+verify-fingerprint: "fa78a9f:e1d1b2794180"
 model-profile: standard
 mode: all
 intent-source: user-selection
@@ -19,14 +19,14 @@ last-known-head: 806dcf036d0e2686b0fba7cc91fbdbeeaaa54034
 auto-stashed: false
 config-setup-attempts: 0
 warnings-baseline: 0
-current-step: "RGR T4: RED (AC-7 관측 강화)"
+current-step: "인수검증"
 phases:
   setup: completed
   requirements: completed
   design: completed
-  implement: in_progress
-  review: pending
-  complete: pending
+  implement: completed
+  review: completed
+  complete: in_progress
 steps:
   requirements:
     - PRD 작성: completed
@@ -66,16 +66,28 @@ steps:
         refactor: completed
         commit: b620565
     - "RGR T4 (AC-7)":
-        red: in_progress
-        green: pending
-        refactor: pending
-    - 변경사항 수집: pending
+        red: completed
+        test-file-hash: 886a0a1afdf0268571ff809070b3f05d419778ca
+        test-count: 132
+        green: completed
+        refactor: completed
+        commit: 3cbcc8a
+    - "RGR T5 (변 드래그 방어 — 리뷰 반영)":
+        red: completed
+        test-file-hash: 09a2b62683360d62a28ea2cf76e2705dcd1d8d73
+        test-count: 134
+        green: completed
+        refactor: completed
+        commit: 92cd77a
+    - 변경사항 수집: completed
   review:
-    - mechanical-gate: pending
-    - spec-review (1단계): pending
-    - quality-review + security (2단계 병렬): pending
+    - mechanical-gate (build + test): completed
+    - spec-review (1단계): completed
+    - quality-review + security (2단계 병렬): completed
+    - 리뷰 1회차 반영 (사이클 5 + doc): completed
+    - 리뷰 2회차 반영 (문서 모순 4건): completed
   complete:
-    - verify-gate: pending
+    - verify-gate: completed
     - 인수검증: pending
 execution-log:
   - phase: setup
@@ -120,6 +132,9 @@ execution-log:
     decision: "사용자 결정 — 관측을 강화하고 진입 가드를 추가한다. 한계값 오염 변형에만 '결과가 원본 프레임과 같다'를 단언하고, 좌표 오염 변형은 isFinite만 유지(결과 후퇴가 이미 처리하므로 등가로 못 박으면 구현만 고정된다)"
   - phase: implement
     note: "green-coder가 aspectIfCollapsed를 설계상 위치(height 다음)가 아니라 매개변수 목록 끝에 놓았다. private 함수라 계약 영향 없어 그대로 둠"
+  - phase: complete
+    gate: verify
+    result: "PASS — SoozipGeometry 134 / SoozipLayout 95 / SoozipDraft 26 / 앱 169, 0 fail, BUILD SUCCEEDED. 경고 1건은 측정 노이즈(appintentsmetadataprocessor 툴체인 경고, 소스 귀속 0건, EDITOR-4·5·6 로그에 동일 존재). 지문 fa78a9f:e1d1b2794180"
   - phase: design
     correction: "오케스트레이터 자기정정 — 앞서 'AC-5가 corner.sign 변이를 죽인다'를 확인했다고 보고했으나 보정 블록을 빼고 계산한 것이라 틀렸다. 보정을 넣으면 center_final = anchorWorld - R(anchorSign x new/2)로 newCenterLocal이 완전 소거되어 등가 변이다"
 ```
