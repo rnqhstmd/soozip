@@ -1,0 +1,22 @@
+# EDITOR-7 최종 변경사항 (main...HEAD)
+
+ .../Sources/SoozipGeometry/ResizeAnchor.swift      | 271 +++++++++++-
+ .../SoozipGeometryTests/ResizeAnchorTests.swift    | 486 ++++++++++++++++++++-
+ context/editor/status.md                           |   3 +-
+ 3 files changed, 735 insertions(+), 25 deletions(-)
+
+---
+전문이 크다(700줄+). 아래 파일을 Read 도구로 직접 확인하라:
+- Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift
+- Packages/SoozipGeometry/Tests/SoozipGeometryTests/ResizeAnchorTests.swift
+- context/editor/status.md (28행 부근)
+
+커밋:
+fa78a9f fix: 코드 리뷰 2회차 반영 — 정정이 만든 문서 모순 4건
+92cd77a feat: EDITOR-7 — 변 드래그 방어 대칭 + 리뷰 반영 (RGR 사이클 5/5)
+3cbcc8a feat: EDITOR-7 — 비유한 입력 방어 (RGR 사이클 4/4)
+b620565 feat: EDITOR-7 — (0,0) 붕괴 복원 + 결과 유한성 후퇴 (RGR 사이클 3/4)
+3decf9b feat: EDITOR-7 — 하한이 상한을 이긴다 (RGR 사이클 2/4)
+5d12d0e feat: EDITOR-7 — 리사이즈 한계 단일 출처 (RGR 사이클 1/4)
+8d31874 docs: 보정 블록이 대수적 항등임을 명시
+ed78d5f test: EDITOR-7 — 회전 90°·고정점 통과 특성화 (RGR 사이클 0/4)
