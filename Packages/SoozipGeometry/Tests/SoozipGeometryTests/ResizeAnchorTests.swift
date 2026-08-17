@@ -332,3 +332,83 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     #expect(resized.size.width.isFinite)
     #expect(resized.size.height.isFinite)
 }
+
+// MARK: - 유한성 가드: 드래그 좌표·리사이즈 한계값 오염 방어 (AC 없음 — 방어 요구사항)
+
+@Test func 드래그_좌표나_리사이즈_한계값이_비유한이면_결과가_유한하다() {
+    // worldPoint.x · worldPoint.y · minShortSide · maxLongSide 중 **하나라도**
+    // 비유한(NaN 또는 Infinity)이면 결과 center.x · center.y · size.width ·
+    // size.height가 전부 유한해야 한다(FR-5 전반부). 방어 대상 조건이 4개인데
+    // 한 변형만 재면 나머지 3개를 통째로 지워도 이 테스트가 통과하므로, 각
+    // 조건을 NaN·Infinity로 각각 오염시킨 여덟 변형을 배열로 순회한다
+    // (`HandlePlacementTests.swift`의 `프레임_필드가_비유한이면_box가_nil이다`
+    // 형식을 따른다).
+    //
+    // worldPoint 쪽(변형 1~4): 한 성분의 NaN이 좌표 변환을 거치며 두 성분으로
+    // 번진다 — 회전 0에서 sin(-0) = -0.0이라 NaN × -0.0 = NaN이 되기 때문이다.
+    // 그 뒤로는 모든 비교가 거짓이 되어 클램프가 통째로 스킵되고(Swift의
+    // max(x, y)는 y >= x ? y : x로 정의돼 비교가 거짓이면 y를 그대로 반환한다),
+    // 결과 네 필드가 전부 NaN으로 확정된다. **이 네 변형에는 등가 단언을
+    // 넣지 않는다** — 결과 유한성 후퇴(비유한 결과를 원본 프레임으로 되돌리는
+    // 처리)가 이미 원본 프레임을 복원해 주므로, 여기서 다시 등가를 못 박으면
+    // 나중에 "유한값으로 클램프"(원본이 아닌 다른 유한 프레임으로 복구)하는
+    // 구현으로 바뀔 때 요구사항 밖 테스트가 깨진다.
+    //
+    // 한계값 쪽(변형 5~8): 좌표 오염과 달리 결과를 NaN으로 오염시키지 **않고**
+    // "한계를 조용히 무력화"한다 — 비유한 한계값은 클램프의 비교를
+    // 전부 거짓으로 만들어 클램프 자체를 스킵시키고, 결과는 유한하지만 한계가
+    // 적용되지 않은 값이 된다. 실측(오케스트레이터 재현):
+    //   · 정상 하한 40, 대각 고정점 근접 드래그(401,449) → (80,40) — 하한이 지켜짐
+    //   · 하한 .nan,  같은 드래그                          → (2,1)   — 하한이 조용히 사라짐
+    //   · 정상 상한 7680, 거대 드래그(99999,-99999)        → (7680,3840) — 상한이 지켜짐
+    //   · 상한 .nan,  같은 드래그                          → (200898,100449) — 상한이 조용히 사라짐
+    // `(2,1)`도 `(200898,100449)`도 완벽하게 유한하므로 isFinite만으로는 이
+    // 사고를 영영 관측할 수 없다 — 결과가 "원본 프레임을 벗어나지 않는다"는
+    // FR-5 후반부를 직접 재는 등가 단언이 이 네 변형에서만 필요하다. 그래서
+    // worldPoint도 변형 1~4의 (700,300)이 아니라, 실제로 각 한계가 발동하는
+    // 지점(하한: 대각 고정점 근접, 상한: 초원거리)으로 바꿨다 — (700,300)은
+    // 정상 한계에서도 클램프가 발동하지 않는 드래그라 한계 무력화를
+    // 관측하지 못한다.
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
+                           rotation: 0)
+
+    let 변형들: [(worldPoint: Vec2, minShortSide: Double, maxLongSide: Double, 한계값오염: Bool)] = [
+        // 좌표 축 오염 — 결과 유한성 후퇴가 원본으로 되돌린다. isFinite만 잰다.
+        (Vec2(x: .nan, y: 300), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        (Vec2(x: .infinity, y: 300), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        (Vec2(x: 700, y: .nan), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        (Vec2(x: 700, y: .infinity), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        // 하한 축 오염 — 대각 고정점(400,450) 근접 드래그라 정상 한계에서는
+        // 하한 클램프가 실제로 발동한다(`크기_하한에서_정지한다`와 같은 지점).
+        (Vec2(x: 401, y: 449), .nan, 스토리한계.maxLongSide, true),
+        (Vec2(x: 401, y: 449), .infinity, 스토리한계.maxLongSide, true),
+        // 상한 축 오염 — 초원거리 드래그라 정상 한계에서는 상한 클램프가 실제로
+        // 발동한다(`크기_상한에서_정지한다`와 같은 지점).
+        (Vec2(x: 99_999, y: -99_999), 스토리한계.minShortSide, .nan, true),
+        (Vec2(x: 99_999, y: -99_999), 스토리한계.minShortSide, .infinity, true),
+    ]
+
+    for 변형 in 변형들 {
+        let resized = frame.resized(draggingCorner: .topRight,
+                                    to: 변형.worldPoint,
+                                    minShortSide: 변형.minShortSide,
+                                    maxLongSide: 변형.maxLongSide)
+
+        #expect(resized.center.x.isFinite)
+        #expect(resized.center.y.isFinite)
+        #expect(resized.size.width.isFinite)
+        #expect(resized.size.height.isFinite)
+
+        if 변형.한계값오염 {
+            // FR-5 후반부: 한계가 무력화됐어도 결과가 원본 프레임을 벗어나지
+            // 않아야 한다 — "레이어가 화면 밖 비유한 좌표로 튀지 않는다"는
+            // 문면을, 유한하되 원본과 다른 값(2,1)이나 (200898,100449)까지
+            // 잡도록 등가로 강화한 것이다.
+            #expect(isClose(resized.center.x, 500))
+            #expect(isClose(resized.center.y, 400))
+            #expect(isClose(resized.size.width, 200))
+            #expect(isClose(resized.size.height, 100))
+        }
+    }
+}
