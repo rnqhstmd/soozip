@@ -258,3 +258,77 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     #expect(isClose(resized.size.width, 40))
     #expect(isClose(resized.size.height, 40_000))
 }
+
+// MARK: - AC-4: (0,0) 붕괴에서 하한 복원
+
+@Test func 대각_고정점과_정확히_일치하도록_끌어도_하한에서_복원된다() {
+    // Given: LayerFrame(center: (500,400), size: (200,100), rotation: 0).
+    //
+    // ⚠️ rotation은 반드시 0이어야 한다 — 회전이 붙으면 좌표 변환(회전 행렬
+    // 곱)이 부동소수점 잔차 ~1e-14를 남겨 "폭·높이가 정확히 0"에 도달하지
+    // 못하고, 곱셈 경로가 우연히 같은 값을 내 이 결함을 관측하지 못한다.
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
+                           rotation: 0)
+    let anchor = frame.corner(.bottomLeft)  // (400, 450)
+
+    // When: topRight 코너를 대각 고정점(bottomLeft)의 정확한 좌표로 끈다.
+    // 드래그 지점이 고정점과 정확히 일치하면 폭·높이가 둘 다 0이 되는데,
+    // 클램프의 하한 조건이 "shortSide > 0"이면 통째로 스킵되어 레이어가
+    // 점이 되어 다시 잡을 수 없다. 현재 결과는 (0, 0)이다.
+    let resized = frame.resized(draggingCorner: .topRight,
+                                to: anchor,
+                                minShortSide: 스토리한계.minShortSide,
+                                maxLongSide: 스토리한계.maxLongSide)
+
+    // Then: 원본 비율 2:1을 유지한 채 하한(40)에서 복원되어 크기가
+    // (80, 40)이 되고, bottomLeft 고정점은 그대로 유지된다.
+    //
+    // ⚠️ size.shortSide == 40 / size.longSide == 80 형태로 단언하면 축
+    // 정보가 사라져 폭·높이가 뒤바뀐 구현((40, 80))도 그대로 통과한다.
+    // 반드시 size.width·size.height를 직접 단언해야 그 변이가 죽는다.
+    #expect(isClose(resized.size.width, 80))
+    #expect(isClose(resized.size.height, 40))
+    #expect(isClose(resized.corner(.bottomLeft).x, anchor.x))
+    #expect(isClose(resized.corner(.bottomLeft).y, anchor.y))
+}
+
+// MARK: - 극단 비율 붕괴 특성화 (AC 없음 — AC-4 수정의 회귀 방지 증인)
+
+@Test func 극단_비율의_레이어가_붕괴해도_결과는_유한하다() {
+    // 목적: 위 테스트(AC-4)를 고치는 방식(하한 복원)이 이 입력에서는 회귀를
+    // 만들 수 있다는 것을 특성화한다. 비율이 극단이면 복원된 값이 상한·
+    // 하한 클램프를 거치며 Infinity로 넘치고, 좌표 계산이 inf - inf를 만나
+    // NaN이 된다.
+    //
+    // Given: 비율 1e307(=1e307:1)의 극단적으로 가는 레이어. 임계는 비율
+    // > 4.494e306 또는 < 2.2249e-307이다.
+    let frame = LayerFrame(center: Vec2(x: 0, y: 0),
+                           size: Size2(width: 1e307, height: 1),
+                           rotation: 0)
+    let anchor = frame.corner(.bottomLeft)  // (-5e306, 0.5)
+
+    // When: topRight 코너를 고정점의 정확한 좌표로 끌어 붕괴시킨다.
+    let resized = frame.resized(draggingCorner: .topRight,
+                                to: anchor,
+                                minShortSide: 스토리한계.minShortSide,
+                                maxLongSide: 스토리한계.maxLongSide)
+
+    // Then: center.x·center.y·size.width·size.height가 전부 유한하다.
+    //
+    // (0,0)의 올바른 답인 40 × 1e307은 Double로 표현할 수 없으므로 어떤
+    // 구현도 낼 수 없다. 정직한 선택지는 원본 프레임으로 후퇴뿐이고, 후퇴
+    // 하려면 붕괴 검출이 필요하다. 이 테스트는 그 결과 유한성 검사의 유일한
+    // 증인이다 — 이 검사를 지우는 변이를 다른 어떤 테스트도 죽이지 못한다.
+    //
+    // 지금은 통과한다(오늘 결과는 크기 (0,0)·중심 유한이라 이미 유한하다).
+    // 붕괴 복원만 넣으면 이 테스트는 빨강이 되고, 결과 유한성 검사(붕괴 시
+    // 원본 프레임으로 후퇴)까지 넣으면 다시 초록이 된다.
+    //
+    // resized == frame 같은 등가 단언은 쓰지 않는다 — 원본으로의 후퇴는
+    // 허용이지 요구가 아니다.
+    #expect(resized.center.x.isFinite)
+    #expect(resized.center.y.isFinite)
+    #expect(resized.size.width.isFinite)
+    #expect(resized.size.height.isFinite)
+}

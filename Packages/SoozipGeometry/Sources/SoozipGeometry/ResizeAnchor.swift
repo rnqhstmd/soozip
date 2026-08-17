@@ -74,7 +74,8 @@ extension LayerFrame {
 
         (newW, newH) = Self.clamped(width: newW, height: newH,
                                     minShortSide: minShortSide,
-                                    maxLongSide: maxLongSide)
+                                    maxLongSide: maxLongSide,
+                                    aspectIfCollapsed: ratio)
 
         // 고정점에서 드래그 방향으로 새 중심을 잡는다
         let newCenterLocal = Vec2(x: anchorLocal.x + corner.sign.x * newW / 2,
@@ -107,6 +108,30 @@ extension LayerFrame {
         let moved = result.corner(anchorCorner)
         result.center.x += anchorWorld.x - moved.x
         result.center.y += anchorWorld.y - moved.y
+        // **이 단위가 만드는 회귀를 막는 유일한 수단이다.** 위 붕괴 씨앗은 극단 비율에서
+        // 오늘 유한한 결과를 비유한으로 바꾼다 — `size (1e307, 1)`을 고정점에 정확히 끌면
+        // 오늘은 `size (0,0)`·`center (-5e306, 0.5)`(유한)인데, 씨앗 `(1e307, 1)`이 상한
+        // 클램프로 `(7680, 7.68e-304)`가 된 뒤 하한 클램프의 `k = 40/7.68e-304`가
+        // **긴 변을 `Infinity`로 밀어올린다.** 이어서 위 보정의 `inf − inf`가 center를
+        // `NaN`으로 만든다. 임계는 비율 `> 4.494e306` 또는 `< 2.2249e-307`이다.
+        //
+        // **올바른 답 `(40 × 1e307, 40)`은 `Double`로 표현 불가능하다** — 어떤 구현도
+        // 그것을 낼 수 없으므로 정직한 선택지는 후퇴뿐이고, 후퇴하려면 검출이 필요하다.
+        //
+        // **사전조건 가드로는 못 잡는다** — 비율 `1e307`은 `isFinite`이고 `> 0`이다.
+        // 부수 효과로 `rotation`이 비유한인 프레임도 여기서 걸린다(그 경우 네 필드가 전부
+        // `NaN`이 되는데, 후퇴하면 center·size 4/4가 유한해진다). 프레임 유한성 가드를
+        // 진입부에 따로 두지 않는 이유가 이것이다 — `HandlePlacement.init`은 **후퇴할
+        // `self`가 없어** 문 앞에서 거부(`box = nil`)할 수밖에 없지만, 이 함수는
+        // `LayerFrame → LayerFrame`이라 잘 정의된 후퇴 대상이 있고 사후조건이 사전조건보다
+        // 넓다. (비유한 `rotation`의 라이브 도달 경로는 이 단위에서 **찾지 못했다** —
+        // "없다"가 아니라 "찾지 못했다"로 남긴다.)
+        //
+        // ⚠️ **이 검사를 지우는 변이는 `극단_비율의_레이어가_붕괴해도_결과는_유한하다`
+        // 1건만이 죽인다.** 변 드래그 경로에는 이 검사를 두지 않았다 — 그 경로엔 씨앗이
+        // 발동하지 않아 이 단위가 회귀를 만들지 않았기 때문이다.
+        guard result.center.x.isFinite, result.center.y.isFinite,
+              result.size.width.isFinite, result.size.height.isFinite else { return self }
         return result
     }
 
@@ -139,7 +164,8 @@ extension LayerFrame {
 
         (newW, newH) = Self.clamped(width: newW, height: newH,
                                     minShortSide: minShortSide,
-                                    maxLongSide: maxLongSide)
+                                    maxLongSide: maxLongSide,
+                                    aspectIfCollapsed: nil)
 
         // 반대쪽 변을 고정하려면 중심을 늘어난 절반만큼 이동시킨다
         let deltaW = newW - size.width
@@ -178,6 +204,21 @@ extension LayerFrame {
     /// `shortSide < 2.2249e-307`이면 `k = 하한/shortSide`가 `Infinity`로 오버플로우한다
     /// (`(2e-307, 1e-307)` → `(inf, inf)`, **비정규수 없이 정규수만으로 발생**).
     ///
+    /// **`aspectIfCollapsed`는 코너 드래그 전용이다.** `(0,0)`에는 어떤 배수를 곱해도
+    /// `(0,0)`이라, 붕괴한 뒤에는 이 함수 안에서 비율을 되짚을 방법이 없다. 코너 드래그는
+    /// 원본 종횡비를 이미 갖고 있으므로 그것을 씨앗으로 넘긴다.
+    /// **씨앗은 `(비율, 1)`이지 `(하한 × 비율, 하한)`이 아니다** — 씨앗이 크기까지 정하면
+    /// 하한 규칙이 이 함수 안에 두 번 적히고, 그러면 한쪽만 바뀌는 날이 온다. 씨앗은 비율만
+    /// 나르고 크기는 아래 하한 블록이 정한다.
+    /// ⚠️ **그러나 `1`이라는 정규화 축은 임의 선택이다.** `(1, 1/비율)`과 정상 범위에서
+    /// 1e-14 이내로 같고 **극단 비율에서만 갈라진다** — 그 갈라짐이 호출부의 결과 유한성
+    /// 검사가 막는 오버플로우다. "비율만 나른다"로 끝내면 이 사실이 숨는다.
+    ///
+    /// **변 드래그는 `nil`을 넘긴다.** 한 축만 바꾸는 계약이라 되돌릴 "원본 비율"이라는
+    /// 개념 자체가 없고, 그 경로가 `(0,0)`에 닿으려면 원본 크기가 이미 `(0,0)`이어야 하는데
+    /// 그때 비율은 `0/0 = NaN`이다. `Double`을 강제로 받게 하면 그 `NaN`이 씨앗이 되어
+    /// **오늘 `(0,0)`을 내는 입력이 `NaN`을 내게 된다.** 옵셔널이 그 경로를 타입으로 닫는다.
+    ///
     /// ⚠️ **이 함수는 코너·변 드래그가 공유하는데 양축을 함께 곱한다.** 코너 드래그는 비율
     /// 유지가 계약이라 맞지만, 변 드래그의 계약은 "한 축만 바꾼다"이다. 그래서 변 드래그에서
     /// 클램프가 발동하면 **불변이어야 할 축까지 바뀐다**: `50×100` 프레임의 `.right` 변을
@@ -196,9 +237,16 @@ extension LayerFrame {
     /// 이 결함의 유일한 증인은 `하한_우선_순서교체는_변드래그_결과와_불변축까지_함께_바꾼다`다.
     private static func clamped(width: Double, height: Double,
                                 minShortSide: Double,
-                                maxLongSide: Double) -> (Double, Double) {
+                                maxLongSide: Double,
+                                aspectIfCollapsed: Double?) -> (Double, Double) {
         var w = width
         var h = height
+
+        // 붕괴 복원 — 곱셈으로는 빠져나올 수 없는 유일한 지점.
+        if w == 0, h == 0, let aspect = aspectIfCollapsed {
+            w = aspect
+            h = 1
+        }
 
         // 상한 먼저.
         let longSide = max(w, h)
