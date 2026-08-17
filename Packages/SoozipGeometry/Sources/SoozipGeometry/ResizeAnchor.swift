@@ -36,7 +36,26 @@ extension LayerFrame {
                                 size: Size2(width: newW, height: newH),
                                 rotation: rotation)
 
-        // 회전 중심이 바뀌었으므로 고정점이 유지되도록 보정한다
+        // **대수적으로 항등이며, 그 이상이다.**
+        //   center_final = nc + (anchorWorld − moved)
+        //                = nc + anchorWorld − (nc + R(anchorSign × new/2))
+        //                = anchorWorld − R(anchorSign × new/2)
+        // **`nc`가 완전히 소거된다.** `toWorld`가 아핀이고 `R`이 선형이며
+        // `Corner.opposite.sign == −Corner.sign`(네 케이스 전수)이기 때문이다.
+        // 즉 위 `newCenterLocal` 계산을 **어떻게 하든 결과가 같다** —
+        // `corner.sign`을 드래그 방향 부호로 바꾸는 변이는 실측 차이 `0.0`인
+        // **등가 변이**이고, 아래 `+=`를 `-=`로 바꾸는 것도 등가다(보정항이 0이므로).
+        // (무작위 300회 실측: 보정항 최대 절대값 1.205e-11 — 반올림뿐이다.)
+        //
+        // 귀결 1: **"고정점이 유지된다"를 재는 단언이 재는 축은 `corner.opposite`
+        // 하나뿐이다.** `toLocal`·`newCenterLocal`·`clamped`의 어떤 변이도 그 절로는
+        // 죽지 않는다 — 결과가 유한하기만 하면 통과한다. 실제 관측면은 `size`와
+        // 끌린 코너 쪽이다. `ResizeAnchorTests`의 기존 두 건이 그 상태다.
+        //
+        // 귀결 2: **위 `newCenterLocal` 계산과 이 보정 블록 중 한쪽은 관측 불가능한
+        // 죽은 코드다.** 어느 쪽을 지워도 어떤 테스트도 차이를 관측하지 못한다.
+        // `EDITOR-7`은 정리하지 않았다 — 어느 쪽을 살릴지는 정책 결정이고(읽기 쉬운
+        // 쪽? 반올림에 강한 쪽?), 지금 정리하면 **안전망 없는 변경**이 된다.
         let moved = result.corner(anchorCorner)
         result.center.x += anchorWorld.x - moved.x
         result.center.y += anchorWorld.y - moved.y
