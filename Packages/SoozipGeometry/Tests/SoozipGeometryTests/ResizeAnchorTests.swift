@@ -94,3 +94,43 @@ private let maxSide: Double = 7680   // 캔버스 긴 변 1920 × 4
 
     #expect(isClose(resized.corner(.topLeft).x, leftEdgeX))
 }
+
+@Test func 회전된_레이어의_코너드래그는_반대편_코너와_크기를_함께_고정한다() {
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
+                           rotation: .pi / 2)
+
+    let resized = frame.resized(draggingCorner: .topRight,
+                                to: Vec2(x: 700, y: 300),
+                                minShortSide: minSide, maxLongSide: maxSide)
+
+    // bottomLeft 절은 보정 블록이 중심 계산을 통째로 소거하는 대수적 항등식이라
+    // 어떤 변이도 죽이지 못한다(무작위 300회 실측 편차 1.2e-11). 값이 두 벌로
+    // 갈라질 수 있는 유일한 자리는 size 계산이며, toLocal의 회전 부호 반전
+    // 변이와 abs() 제거 변이는 size 절에서만 드러난다.
+    #expect(isClose(resized.corner(.bottomLeft).x, 450))
+    #expect(isClose(resized.corner(.bottomLeft).y, 300))
+    #expect(isClose(resized.size.width, 500))
+    #expect(isClose(resized.size.height, 250))
+}
+
+@Test func 대각_고정점을_지나쳐_끌어도_도형이_뒤집히지_않는다() {
+    let frame = LayerFrame(center: Vec2(x: 500, y: 400),
+                           size: Size2(width: 200, height: 100),
+                           rotation: 0)
+
+    let resized = frame.resized(draggingCorner: .topRight,
+                                to: Vec2(x: 300, y: 500),
+                                minShortSide: minSide, maxLongSide: maxSide)
+
+    // bottomLeft 절은 위와 같은 이유로 공허한 항등식이지만 AC가 요구하므로 유지한다.
+    // 실질 관측면은 size와 topRight이며, 특히 topRight (500,400) 절이
+    // Corner.topRight.sign 열거형 정의 변이((1,-1) -> (1,1))를 이 파일 안에서
+    // 유일하게 죽인다.
+    #expect(isClose(resized.corner(.bottomLeft).x, 400))
+    #expect(isClose(resized.corner(.bottomLeft).y, 450))
+    #expect(isClose(resized.size.width, 100))
+    #expect(isClose(resized.size.height, 50))
+    #expect(isClose(resized.corner(.topRight).x, 500))
+    #expect(isClose(resized.corner(.topRight).y, 400))
+}
