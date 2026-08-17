@@ -200,7 +200,8 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
 
 @Test func 하한이_상한을_이겨_긴_변이_상한을_넘어도_짧은_변은_하한_아래로_새지_않는다() {
     // 임계 비율은 상한/하한이며 9:16에서 192, 4:5에서 135다. 그 비율을 넘는
-    // 가는 레이어(여기서는 200:1 = 8000/40)에서 현재는 짧은 변이 하한 아래로 샌다.
+    // 가는 레이어(여기서는 200:1 = 8000/40)에서 `EDITOR-7` 이전에는 짧은 변이
+    // 하한 아래로 샜다(현재는 새지 않는다 — 아래 단언이 그것을 확인한다).
     //
     // Given: 비율 200:1(8000×40)의 매우 가는 레이어.
     let frame = LayerFrame(center: Vec2(x: 0, y: 0),
@@ -223,7 +224,8 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // Then: 두 결과 모두 size가 (8000, 40)이다 — 짧은 변 40이 유지되고,
     // 긴 변 8000이 상한 7680을 초과한 채로 확정된다(하한이 상한을 이긴다).
     //
-    // 현재 동작은 (7680, 38.4)다 — 짧은 변이 하한 40 아래로 1.6px 샌다.
+    // `EDITOR-7` 이전 동작은 (7680, 38.4)였다 — 짧은 변이 하한 40 아래로
+    // 1.6px 샜다. 현재는 (8000, 40)이다(아래 단언).
     // isClose 필수: 제자리 드래그의 실측값은 8000.000000000001,
     // 먼 드래그의 실측값은 7999.999999999999라 ==으로는 통과가 불가능하다.
     #expect(isClose(제자리결과.size.width, 8000))
@@ -236,9 +238,9 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
 
 @Test func 하한_우선_순서교체는_변드래그_결과와_불변축까지_함께_바꾼다() {
     // 목적: 하한 우선(블록 순서 교체)은 코너 경로만이 아니라 변 드래그 경로의
-    // 결과도 바꾼다. 현재는 (7.68, 7680)이고 교체 후 (40, 40000)이다. 이
-    // 테스트가 없으면 clamped를 쪼개 변 경로만 옛 순서로 되돌리는 변이를
-    // 아무도 못 잡는다.
+    // 결과도 바꾼다. `EDITOR-7` 이전에는 (7.68, 7680)이었고, 교체 후(현재)는
+    // (40, 40000)이다. 이 테스트가 없으면 clamped를 쪼개 변 경로만 옛 순서로
+    // 되돌리는 변이를 아무도 못 잡는다.
     //
     // 동시에 이 값은 공유 클램프가 변 드래그의 불변 축까지 바꾼다는 결함(F-4)의
     // 유일한 증인이기도 하다 — 불변이어야 할 높이가 100000 -> 40000으로
@@ -275,7 +277,8 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // When: topRight 코너를 대각 고정점(bottomLeft)의 정확한 좌표로 끈다.
     // 드래그 지점이 고정점과 정확히 일치하면 폭·높이가 둘 다 0이 되는데,
     // 클램프의 하한 조건이 "shortSide > 0"이면 통째로 스킵되어 레이어가
-    // 점이 되어 다시 잡을 수 없다. 현재 결과는 (0, 0)이다.
+    // 점이 되어 다시 잡을 수 없다. `EDITOR-7` 이전에는 결과가 (0, 0)이었다
+    // (현재는 아래 단언대로 (80, 40)으로 하한 복원된다).
     let resized = frame.resized(draggingCorner: .topRight,
                                 to: anchor,
                                 minShortSide: 스토리한계.minShortSide,
@@ -289,6 +292,11 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // 반드시 size.width·size.height를 직접 단언해야 그 변이가 죽는다.
     #expect(isClose(resized.size.width, 80))
     #expect(isClose(resized.size.height, 40))
+
+    // bottomLeft 절은 이 테스트에서도 항등이라 변이를 죽이지 못한다 — 후퇴
+    // 경로에서도 자동으로 참이다(후퇴하면 반환값이 원본 self이므로
+    // corner(.bottomLeft) == anchor가 그대로 성립한다). 결과가 비유한이 아닌
+    // 한 실패가 불가능하므로 실질 관측면은 위 size.width·size.height다.
     #expect(isClose(resized.corner(.bottomLeft).x, anchor.x))
     #expect(isClose(resized.corner(.bottomLeft).y, anchor.y))
 }
@@ -302,7 +310,8 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // NaN이 된다.
     //
     // Given: 비율 1e307(=1e307:1)의 극단적으로 가는 레이어. 임계는 비율
-    // > 4.494e306 또는 < 2.2249e-307이다.
+    // > 4.494e306 또는 그 미만 쪽 임계다 — 정확한 값과 유도는
+    // `LayerFrame.clamped` doc 참조.
     let frame = LayerFrame(center: Vec2(x: 0, y: 0),
                            size: Size2(width: 1e307, height: 1),
                            rotation: 0)
@@ -321,9 +330,16 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // 하려면 붕괴 검출이 필요하다. 이 테스트는 그 결과 유한성 검사의 유일한
     // 증인이다 — 이 검사를 지우는 변이를 다른 어떤 테스트도 죽이지 못한다.
     //
-    // 지금은 통과한다(오늘 결과는 크기 (0,0)·중심 유한이라 이미 유한하다).
-    // 붕괴 복원만 넣으면 이 테스트는 빨강이 되고, 결과 유한성 검사(붕괴 시
-    // 원본 프레임으로 후퇴)까지 넣으면 다시 초록이 된다.
+    // `EDITOR-7` 이전(붕괴 복원이 없던 시절)에는 이 지점에서 곧장 통과했다 —
+    // 그때 결과는 크기 (0,0)·중심 유한이라 이미 유한했다. 붕괴 복원만 넣으면
+    // 이 테스트는 빨강이 됐고(위 오버플로우), 결과 유한성 검사(붕괴 시 원본
+    // 프레임으로 후퇴)까지 넣어 다시 초록이 됐다.
+    //
+    // **오늘은 원본 후퇴가 일어나서 유한한 것이다** — size는 (0,0)이 아니라
+    // 원본 (1e307, 1)로 돌아간다. 이 테스트가 초록인 이유가 "애초에 위험이
+    // 없어서"가 아니라 "가드가 실제로 원본으로 후퇴시켜서"라는 점이 중요하다 —
+    // 만약 지금도 여전히 (0,0)이 났다면 그건 이 테스트가 아무것도 막지 못한다는
+    // 뜻이었을 것이다.
     //
     // resized == frame 같은 등가 단언은 쓰지 않는다 — 원본으로의 후퇴는
     // 허용이지 요구가 아니다.
@@ -369,6 +385,23 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     // 지점(하한: 대각 고정점 근접, 상한: 초원거리)으로 바꿨다 — (700,300)은
     // 정상 한계에서도 클램프가 발동하지 않는 드래그라 한계 무력화를
     // 관측하지 못한다.
+    //
+    // ⚠️ **`.nan`과 `.infinity` 하한은 서로 반대 메커니즘으로 같은 결론(유한하고
+    // 원본과 같음)에 도달한다 — 위 "비교를 전부 거짓으로 만들어 스킵시킨다"는
+    // 설명은 `.nan`과 상한 쪽(`.nan`·`.infinity` 둘 다)에만 맞는다.** `.infinity`
+    // **하한**은 `shortSide < .infinity`가 **참**이 되어 클램프를 스킵이 아니라
+    // 오히려 **강제 발동**시킨다 — `k = ∞/shortSide = ∞`가 되어 `size (∞,∞)`를
+    // 만들고, 뒤이은 코너 보정의 `∞ − ∞ = NaN`이 center를 오염시킨 뒤 **결과
+    // 유한성 가드가 원본으로 후퇴시켜** 등가 단언을 통과시킨다(실측: 원본
+    // (200,100) 그대로 — 무증인 통과, 즉 이 변형은 진입 가드가 아니라 결과
+    // 가드가 살려낸다). 상한 `.nan`/`.infinity`는 대칭이 아니다 — 둘 다
+    // `longSide > .nan`/`longSide > .infinity` 비교가 거짓이 되어 그대로
+    // 스킵된다.
+    //
+    // (참고: 변 드래그 8변형(`변_드래그도_...`, 아래)에서는 이 함수에 결과
+    // 유한성 가드가 추가되기 전 하한 `.infinity`가 실제로 실패했었다
+    // (`size (∞,∞)`) — 그 경로엔 결과 가드가 없었기 때문이다. 지금은 코너·
+    // 변 드래그 둘 다 결과 가드가 있어 둘 다 통과한다.)
     let frame = LayerFrame(center: Vec2(x: 500, y: 400),
                            size: Size2(width: 200, height: 100),
                            rotation: 0)
@@ -382,6 +415,7 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
         // 하한 축 오염 — 대각 고정점(400,450) 근접 드래그라 정상 한계에서는
         // 하한 클램프가 실제로 발동한다(`크기_하한에서_정지한다`와 같은 지점).
         (Vec2(x: 401, y: 449), .nan, 스토리한계.maxLongSide, true),
+        // 이 변형은 결과 가드의 증인이지 진입 가드의 증인이 아니다 — 위 설명 참조.
         (Vec2(x: 401, y: 449), .infinity, 스토리한계.maxLongSide, true),
         // 상한 축 오염 — 초원거리 드래그라 정상 한계에서는 상한 클램프가 실제로
         // 발동한다(`크기_상한에서_정지한다`와 같은 지점).
@@ -411,4 +445,96 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
             #expect(isClose(resized.size.height, 100))
         }
     }
+}
+
+// MARK: - 유한성 가드: 변 드래그 방어 (AC 없음 — FR-5는 코너로 한정하지 않는다)
+
+@Test func 변_드래그도_좌표나_리사이즈_한계값이_비유한이면_결과가_유한하다() {
+    // `드래그_좌표나_리사이즈_한계값이_비유한이면_결과가_유한하다`(위, coner 경로)와
+    // 대칭이다. FR-5 원문("드래그 좌표·하한·상한 중 하나라도 비유한이면 리사이즈
+    // 결과가 원본 프레임을 벗어나지 않는다")은 코너로 한정하지 않는데, 같은
+    // 인자 목록을 받는 `resized(draggingEdge:)`에는 진입 가드도 결과 유한성
+    // 후퇴도 없다. 그 결함을 여덟 변형으로 재현한다.
+    //
+    // 기본 프레임: LayerFrame(center: (500,400), size: (200,100), rotation: 0), .right 변.
+    let 기본프레임 = LayerFrame(center: Vec2(x: 500, y: 400),
+                            size: Size2(width: 200, height: 100),
+                            rotation: 0)
+    // 하한 클램프 전용 프레임: 기본 프레임(반폭 100)으로는 (500,400) 드래그가
+    // newW = 100을 내어 하한 40에 걸리지 않는다. 반폭 25(폭 50)이면 같은 드래그
+    // 지점(로컬 x = 0)이 newW = 25를 내어 하한이 실제로 발동한다.
+    let 하한프레임 = LayerFrame(center: Vec2(x: 500, y: 400),
+                            size: Size2(width: 50, height: 100),
+                            rotation: 0)
+
+    let 변형들: [(label: String, frame: LayerFrame, worldPoint: Vec2, minShortSide: Double, maxLongSide: Double, 한계값오염: Bool)] = [
+        // 좌표 축 오염 — 기준 드래그 지점 (700,400)에서 한 성분만 오염시킨다.
+        ("좌표.x = nan", 기본프레임, Vec2(x: .nan, y: 400), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        ("좌표.x = inf", 기본프레임, Vec2(x: .infinity, y: 400), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        ("좌표.y = nan", 기본프레임, Vec2(x: 700, y: .nan), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        ("좌표.y = inf", 기본프레임, Vec2(x: 700, y: .infinity), 스토리한계.minShortSide, 스토리한계.maxLongSide, false),
+        // 하한 축 오염 — 하한프레임을 (500,400)(로컬 x = 0)으로 끌어 하한 클램프가
+        // 실제로 발동하는 지점에서 오염시킨다.
+        ("하한 = nan", 하한프레임, Vec2(x: 500, y: 400), .nan, 스토리한계.maxLongSide, true),
+        ("하한 = inf", 하한프레임, Vec2(x: 500, y: 400), .infinity, 스토리한계.maxLongSide, true),
+        // 상한 축 오염 — 초원거리 드래그라 정상 한계에서는 상한 클램프가 실제로
+        // 발동한다.
+        ("상한 = nan", 기본프레임, Vec2(x: 99_999, y: 400), 스토리한계.minShortSide, .nan, true),
+        ("상한 = inf", 기본프레임, Vec2(x: 99_999, y: 400), 스토리한계.minShortSide, .infinity, true),
+    ]
+
+    for 변형 in 변형들 {
+        let resized = 변형.frame.resized(draggingEdge: .right,
+                                        to: 변형.worldPoint,
+                                        minShortSide: 변형.minShortSide,
+                                        maxLongSide: 변형.maxLongSide)
+
+        #expect(resized.center.x.isFinite, "\(변형.label)")
+        #expect(resized.center.y.isFinite, "\(변형.label)")
+        #expect(resized.size.width.isFinite, "\(변형.label)")
+        #expect(resized.size.height.isFinite, "\(변형.label)")
+
+        if 변형.한계값오염 {
+            // FR-5 후반부: 한계가 무력화됐어도 결과가 그 변형이 쓴 원본
+            // 프레임을 벗어나지 않아야 한다.
+            #expect(isClose(resized.center.x, 변형.frame.center.x), "\(변형.label)")
+            #expect(isClose(resized.center.y, 변형.frame.center.y), "\(변형.label)")
+            #expect(isClose(resized.size.width, 변형.frame.size.width), "\(변형.label)")
+            #expect(isClose(resized.size.height, 변형.frame.size.height), "\(변형.label)")
+        }
+    }
+}
+
+// MARK: - 극단 비율 붕괴 특성화 (AC 없음 — 반대 방향 임계의 회귀 방지 증인)
+
+@Test func 반대_비율로_붕괴해도_결과는_유한하다() {
+    // `극단_비율의_레이어가_붕괴해도_결과는_유한하다`(비율 1e307)의 반대 방향
+    // (비율 1e-307)을 고정한다.
+    //
+    // 붕괴 복원 경로에서 shortSide가 지나치게 작으면 하한 클램프의 배율
+    // k = minShortSide / shortSide가 Double 표현 범위를 넘어 Infinity로
+    // 오버플로우한다. 임계는 shortSide < minShortSide / Double.greatestFiniteMagnitude
+    // 이고 실측 2.2250738585072018e-307이다(EDITOR-7 코드 리뷰 전에는 이 값이
+    // 2.2249e-307로 적혀 있었다 — 오기였다). 반대 방향(비율이 큰 쪽) 임계는
+    // Double.greatestFiniteMagnitude / minShortSide = 4.4942328371557894e306이다.
+    // 이 테스트는 그 임계 근방의 거동을 고정하는 유일한 증인이며, 숫자 자체가
+    // 아니라 "그 구간에서 결과 유한성 후퇴가 동작한다"를 잰다.
+    //
+    // Given: 비율 1e-307(=1:1e307)의 극단적으로 가는 레이어.
+    let frame = LayerFrame(center: Vec2(x: 0, y: 0),
+                           size: Size2(width: 1, height: 1e307),
+                           rotation: 0)
+    let anchor = frame.corner(.bottomLeft)
+
+    // When: topRight 코너를 고정점의 정확한 좌표로 끌어 붕괴시킨다.
+    let resized = frame.resized(draggingCorner: .topRight,
+                                to: anchor,
+                                minShortSide: 스토리한계.minShortSide,
+                                maxLongSide: 스토리한계.maxLongSide)
+
+    // Then: center.x·center.y·size.width·size.height가 전부 유한하다.
+    #expect(resized.center.x.isFinite)
+    #expect(resized.center.y.isFinite)
+    #expect(resized.size.width.isFinite)
+    #expect(resized.size.height.isFinite)
 }
