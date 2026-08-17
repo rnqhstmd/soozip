@@ -195,3 +195,66 @@ private let 스토리한계 = LayerFrame.resizeLimits(canvas: story)
     #expect(isClose(스토리결과.size.width, 7680))
     #expect(isClose(스토리결과.size.height, 3840))
 }
+
+// MARK: - AC-6: 하한이 상한을 이긴다
+
+@Test func 하한이_상한을_이겨_긴_변이_상한을_넘어도_짧은_변은_하한_아래로_새지_않는다() {
+    // 임계 비율은 상한/하한이며 9:16에서 192, 4:5에서 135다. 그 비율을 넘는
+    // 가는 레이어(여기서는 200:1 = 8000/40)에서 현재는 짧은 변이 하한 아래로 샌다.
+    //
+    // Given: 비율 200:1(8000×40)의 매우 가는 레이어.
+    let frame = LayerFrame(center: Vec2(x: 0, y: 0),
+                           size: Size2(width: 8000, height: 40),
+                           rotation: 0)
+
+    // When: topRight 코너를 자기 자신의 현재 위치(4000,-20)로 끈다(이동량 0에
+    // 가까운 드래그) — 그리고 같은 프레임을 훨씬 먼 지점으로도 끈다. 두
+    // 드래그 모두 "수렴"을 관측하기 위해 필요하며, minShortSide/maxLongSide는
+    // 둘 다 스토리한계(40, 7680)를 쓴다.
+    let 제자리결과 = frame.resized(draggingCorner: .topRight,
+                                  to: Vec2(x: 4000, y: -20),
+                                  minShortSide: 스토리한계.minShortSide,
+                                  maxLongSide: 스토리한계.maxLongSide)
+    let 먼거리결과 = frame.resized(draggingCorner: .topRight,
+                                  to: Vec2(x: 999_999_999, y: -999_999_999),
+                                  minShortSide: 스토리한계.minShortSide,
+                                  maxLongSide: 스토리한계.maxLongSide)
+
+    // Then: 두 결과 모두 size가 (8000, 40)이다 — 짧은 변 40이 유지되고,
+    // 긴 변 8000이 상한 7680을 초과한 채로 확정된다(하한이 상한을 이긴다).
+    //
+    // 현재 동작은 (7680, 38.4)다 — 짧은 변이 하한 40 아래로 1.6px 샌다.
+    // isClose 필수: 제자리 드래그의 실측값은 8000.000000000001,
+    // 먼 드래그의 실측값은 7999.999999999999라 ==으로는 통과가 불가능하다.
+    #expect(isClose(제자리결과.size.width, 8000))
+    #expect(isClose(제자리결과.size.height, 40))
+    #expect(isClose(먼거리결과.size.width, 8000))
+    #expect(isClose(먼거리결과.size.height, 40))
+}
+
+// MARK: - 변 드래그 특성화 (AC 없음 — 하한 우선 순서 교체가 변 경로에도 미치는 영향)
+
+@Test func 하한_우선_순서교체는_변드래그_결과와_불변축까지_함께_바꾼다() {
+    // 목적: 하한 우선(블록 순서 교체)은 코너 경로만이 아니라 변 드래그 경로의
+    // 결과도 바꾼다. 현재는 (7.68, 7680)이고 교체 후 (40, 40000)이다. 이
+    // 테스트가 없으면 clamped를 쪼개 변 경로만 옛 순서로 되돌리는 변이를
+    // 아무도 못 잡는다.
+    //
+    // 동시에 이 값은 공유 클램프가 변 드래그의 불변 축까지 바꾼다는 결함(F-4)의
+    // 유일한 증인이기도 하다 — 불변이어야 할 높이가 100000 -> 40000으로
+    // 바뀐다. EDITOR-7은 그 결함을 고치지 않았고(고치려면 "변 드래그에서
+    // 하한·상한이 무엇을 뜻하는가"라는 새 정책이 필요하다), 발동 집합도
+    // 넓히지 않았다(무작위 20,000회 대조로 확인 — 순서와 무관하게 발동 조건이
+    // 같다). 바뀌는 것은 발동 시 이탈량뿐이며 방향은 케이스마다 갈린다.
+    let frame = LayerFrame(center: Vec2(x: 0, y: 0),
+                           size: Size2(width: 30, height: 100_000),
+                           rotation: 0)
+
+    let resized = frame.resized(draggingEdge: .right,
+                                to: Vec2(x: 85, y: 0),
+                                minShortSide: 스토리한계.minShortSide,
+                                maxLongSide: 스토리한계.maxLongSide)
+
+    #expect(isClose(resized.size.width, 40))
+    #expect(isClose(resized.size.height, 40_000))
+}
