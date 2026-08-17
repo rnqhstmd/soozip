@@ -77,10 +77,9 @@ extension LayerFrame {
         // 이 가드가 없으면 요구사항의 "결과가 원본 프레임을 벗어나지 않는다"가 ②에서
         // 깨진다. **후퇴 대상은 `self`이며, 사용자에게는 "그 드래그가 무시된다"로 보인다.**
         //
-        // **프레임 자신의 유한성은 검사하지 않는다.** `HandlePlacement.init`은 같은 검사를
-        // 하지만 그쪽은 **후퇴할 `self`가 없어**(무에서 배치를 만든다) 문 앞에서 거부할
-        // 수밖에 없다. 이 함수는 `LayerFrame → LayerFrame`이라 잘 정의된 후퇴 대상이 있고,
-        // 비유한 `rotation` 같은 경우는 결과가 비유한이 되어 함수 끝에서 잡힌다.
+        // **프레임 자신의 유한성은 검사하지 않는다.** 비유한 `rotation` 같은 경우는
+        // 결과가 비유한이 되어 함수 끝에서 잡힌다. 여기서 진입부에 따로 검사를 두지
+        // 않는 이유(`HandlePlacement.init`과 다른 점)는 아래 결과 유한성 가드 doc 참조.
         //
         // **`ratio`의 유한성·양수성도 검사하지 않는다.** 원본 크기 `(0,0)`이면
         // `ratio = 0/0 = NaN`, `(0, h)`면 `ratio = 0`인데 — 두 경우 모두 결과가 비유한이
@@ -149,7 +148,8 @@ extension LayerFrame {
         // 오늘은 `size (0,0)`·`center (-5e306, 0.5)`(유한)인데, 씨앗 `(1e307, 1)`이 상한
         // 클램프로 `(7680, 7.68e-304)`가 된 뒤 하한 클램프의 `k = 40/7.68e-304`가
         // **긴 변을 `Infinity`로 밀어올린다.** 이어서 위 보정의 `inf − inf`가 center를
-        // `NaN`으로 만든다. 임계는 비율 `> 4.494e306` 또는 `< 2.2249e-307`이다.
+        // `NaN`으로 만든다. 임계는 비율 `> 4.494e306` 또는 그 미만 쪽 임계다 — 정확한
+        // 값과 유도는 아래 `clamped` doc 참조.
         //
         // **올바른 답 `(40 × 1e307, 40)`은 `Double`로 표현 불가능하다** — 어떤 구현도
         // 그것을 낼 수 없으므로 정직한 선택지는 후퇴뿐이고, 후퇴하려면 검출이 필요하다.
@@ -188,6 +188,22 @@ extension LayerFrame {
                         minShortSide: Double,
                         maxLongSide: Double) -> LayerFrame {
 
+        // **코너 경로와 대칭이다.** 이 함수는 같은 인자 목록을 받는 형제 public API인데
+        // 오랫동안 방어가 없었다 — `EDITOR-7` 코드 리뷰가 그 비대칭을 잡았다.
+        //
+        // 방어가 없을 때 실측: `.right` 변을 `(.infinity, 400)`으로 끌면
+        // `size (NaN, 0)` · `center (NaN, NaN)`이 **public API 밖으로 나갔다.**
+        // 하한이 `.nan`이면 `(25, 100)`(하한 40 무력화), 상한이 `.nan`이면
+        // `(99599, 100)`(상한 7680 무력화)이 나갔다.
+        //
+        // `NaN` 프레임은 시각 버그로 끝나지 않는다 — **`JSONEncoder`가 `NaN`에서
+        // `EncodingError`를 던지므로 문서 저장 자체가 실패한다**(실측 확인).
+        //
+        // 요구사항 FR-5는 "드래그 좌표·하한·상한 중 하나라도 비유한이면 리사이즈
+        // 결과가 원본 프레임을 벗어나지 않는다"이며 **코너로 한정하지 않는다.**
+        guard worldPoint.x.isFinite, worldPoint.y.isFinite,
+              minShortSide.isFinite, maxLongSide.isFinite else { return self }
+
         let dragLocal = toLocal(worldPoint)
         var newW = size.width
         var newH = size.height
@@ -214,9 +230,15 @@ extension LayerFrame {
         case .top:    shiftLocal = Vec2(x: 0, y: -deltaH / 2)
         }
 
-        return LayerFrame(center: toWorld(shiftLocal),
-                          size: Size2(width: newW, height: newH),
-                          rotation: rotation)
+        let result = LayerFrame(center: toWorld(shiftLocal),
+                                size: Size2(width: newW, height: newH),
+                                rotation: rotation)
+
+        // 코너 경로의 결과 유한성 가드와 같은 이유다 — 그쪽 doc(위 `resized(draggingCorner:)`
+        // 보정 블록 뒤) 참조.
+        guard result.center.x.isFinite, result.center.y.isFinite,
+              result.size.width.isFinite, result.size.height.isFinite else { return self }
+        return result
     }
 
     /// 짧은 변 하한과 긴 변 상한을 **입력 비율을 보존한 채** 적용한다.
@@ -237,8 +259,13 @@ extension LayerFrame {
     /// 하한이 발동하면 결과는 **`(비율 × 하한, 하한)`으로 유일하게 결정되고 드래그 거리와
     /// 무관하게 수렴한다** — 두 블록이 전부 비율을 보존하기 때문이다. 비율은 드래그가 만드는
     /// 값이 아니라 원본 프레임이 이미 갖고 있던 값이다. **단 정상 범위에서만 참이다**:
-    /// `shortSide < 2.2249e-307`이면 `k = 하한/shortSide`가 `Infinity`로 오버플로우한다
-    /// (`(2e-307, 1e-307)` → `(inf, inf)`, **비정규수 없이 정규수만으로 발생**).
+    /// `shortSide < 하한 / Double.greatestFiniteMagnitude`이면 `k = 하한/shortSide`가
+    /// `Infinity`로 오버플로우한다(`(2e-307, 1e-307)` → `(inf, inf)`, **비정규수 없이
+    /// 정규수만으로 발생**). **이 임계의 정확한 값은 여기 한 곳에만 적는다** — 하한
+    /// `shortSideFloor`(40)에서 유도되므로: `40 / Double.greatestFiniteMagnitude =
+    /// 2.2250738585072018e-307`(`swiftc` 실측). 나머지 두 곳(위 결과 유한성 가드 doc,
+    /// `ResizeAnchorTests`)은 이 문단을 참조한다 — 하한이 바뀌면 이 유도식만 다시
+    /// 계산하면 된다.
     ///
     /// **`aspectIfCollapsed`는 코너 드래그 전용이다.** `(0,0)`에는 어떤 배수를 곱해도
     /// `(0,0)`이라, 붕괴한 뒤에는 이 함수 안에서 비율을 되짚을 방법이 없다. 코너 드래그는
@@ -263,13 +290,16 @@ extension LayerFrame {
     /// "한 축만"은 깨진다.
     ///
     /// **`EDITOR-7`은 이 결함을 고치지 않았다 — 그리고 넓히지도 않았다.** 순서 교체는
-    /// **발동 집합을 바꾸지 않는다**(어느 순서에서도 "발동 없음"의 조건이
-    /// `min ≥ 하한 ∧ max ≤ 상한`으로 같다 — 무작위 20,000회 대조 불일치 0건). 바뀌는 것은
-    /// 발동 시 **이탈량**뿐이고 방향은 케이스마다 갈린다: clamp 입력 `(100, 100000)`은 새
-    /// 순서가 원본에 더 가깝고(Δ 60000 vs 92320), `(20, 8000)`은 옛 순서가 더 가깝다
-    /// (Δ 320 vs 8000). 고치려면 "변 드래그에서 하한·상한이 무엇을 뜻하는가"(변경 축만
-    /// 자르는가? 짧은 변 규칙은 어디로 가는가? 불변 축이 이미 하한 아래면?)를 새로 정해야
-    /// 하며 그것은 정책 결정이다. **`EDITOR-11` 배선 착수 전에 결정할 것.**
+    /// **클램프가 하나도 발동하지 않는 입력 집합을 바꾸지 않는다**(어느 순서에서도 "발동
+    /// 없음"의 조건이 `min ≥ 하한 ∧ max ≤ 상한`으로 같다 — 무작위 20,000회 대조 불일치
+    /// 0건). 단 **발동하는 블록의 조합은 위에 적은 대로 달라진다** — 두 문장은 다른 것을
+    /// 말한다(위 문단의 "발동"은 개별 블록 단위, 여기의 "발동 집합"은 전체 입력 단위다).
+    /// 바뀌는 것은 발동 시 **이탈량**뿐이고 방향은 케이스마다 갈린다: clamp 입력
+    /// `(100, 100000)`은 새 순서가 원본에 더 가깝고(Δ 60000 vs 92320), `(20, 8000)`은
+    /// 옛 순서가 더 가깝다(Δ 320 vs 8000). 고치려면 "변 드래그에서 하한·상한이 무엇을
+    /// 뜻하는가"(변경 축만 자르는가? 짧은 변 규칙은 어디로 가는가? 불변 축이 이미 하한
+    /// 아래면?)를 새로 정해야 하며 그것은 정책 결정이다. **`EDITOR-11` 배선 착수 전에
+    /// 결정할 것.**
     /// 이 결함의 유일한 증인은 `하한_우선_순서교체는_변드래그_결과와_불변축까지_함께_바꾼다`다.
     private static func clamped(width: Double, height: Double,
                                 minShortSide: Double,

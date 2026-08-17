@@ -1,0 +1,13 @@
+=== SPM 패키지 ===
+SoozipGeometry   Test run with 123 tests in 0 suites passed
+SoozipLayout     Test run with 95 tests in 0 suites passed
+SoozipDraft      Test run with 26 tests in 0 suites passed
+
+=== 앱 타깃 ===
+destination: platform=iOS Simulator,name=iPhone 17 Pro
+Test run with 169 tests in 0 suites passed
+
+=== 릴리스 빌드 ===
+빌드 성공
+
+전체 통과
