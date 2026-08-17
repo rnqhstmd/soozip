@@ -2,6 +2,54 @@ import Foundation
 
 extension LayerFrame {
 
+    // MARK: - 리사이즈 한계 (v4 §5.7 · FR-2)
+
+    /// 짧은 변 하한(논리 px). **캔버스와 무관하다** — 4:5든 9:16이든 40이다.
+    /// 이유가 캔버스가 아니라 **손가락**이기 때문이다. 하한이 없으면 레이어가 점이 되어
+    /// 다시 잡을 수 없고(v4 §5.7), 그 기준은 핸들 히트 사각형(44pt)이지 캔버스 치수가 아니다.
+    ///
+    /// **이름이 `resizeLimits`의 튜플 라벨(`minShortSide`)과 일부러 다르다.**
+    /// `clamped`·`resized(…)`가 `minShortSide`라는 **매개변수**를 갖는데, `clamped`는
+    /// `private static func`라 같은 타입의 정적 멤버를 한정자 없이 조회한다. 이름이 같으면
+    /// **매개변수를 통째로 지우고 이 상수에 조용히 결합하는 변이가 컴파일된다**
+    /// (`swiftc`로 확인: 결과가 정상과 동일). 기존·신규 테스트가 예외 없이 하한에 40만
+    /// 넘기므로 그 변이를 죽일 테스트가 없다. **이름을 갈라 컴파일 단계에서 막는다.**
+    /// (인스턴스 메서드인 `resized(draggingCorner:)`는 `static member cannot be used on
+    /// instance` 오류라 원래 안전하다 — 위험은 `clamped` 쪽뿐이다.)
+    ///
+    /// **`private`이다.** 열면 호출부가 40을 직접 읽어 `resizeLimits(canvas:)`를 우회하는
+    /// 가장 짧은 경로가 생긴다 — `HandlePlacement.edgeHideThreshold`가 같은 이유로 `internal`이다.
+    private static let shortSideFloor: Double = 40
+
+    /// 긴 변 상한의 캔버스 배수. **`private`인 이유는 위와 같다** — 열면
+    /// `canvas.longSide * multiple`이라는 재기술 경로가 열린다.
+    private static let canvasLongSideMultiple: Double = 4
+
+    /// 리사이즈 클램프에 넘길 한계 한 쌍. **캔버스 크기가 유일한 입력이다.**
+    ///
+    /// `CanvasAspect`를 받지 않는다 — 그 타입은 `SoozipLayout`에 있고 이 패키지는 볼 수 없다
+    /// (단방향 의존). `Size2`를 받으면 `CanvasAspect.size` · `LayoutDocument.canvas` ·
+    /// `CanvasSurface.canvas` 셋 다 그대로 넘어간다.
+    ///
+    /// **`CanvasSurface`의 파생 프로퍼티가 아니다.** 한계는 뷰포트·줌과 무관한데
+    /// `surface.resizeLimits`로 두면 "줌하면 한계가 변한다"는 오해가 자연스러워지고, 언젠가
+    /// `scale`을 곱하는 변경이 합리적으로 보인다. 그 순간 하한의 단위가 논리 px에서 화면 pt로
+    /// 조용히 바뀐다 — `edgeHideThreshold`(화면 pt)와 이것(논리 px)의 단위가 다른 것이 핵심이다.
+    ///
+    /// **둘을 한 값으로 낸다.** 하한만 따로 얻는 경로를 두면 상한은 캔버스에서, 하한은
+    /// 리터럴에서 오는 호출부가 생긴다. `CanvasSurface.zoomLimits`가 같은 이유로 튜플이다.
+    ///
+    /// ⚠️ **타입이 이 값의 사용을 강제하지 않는다.** `resized(…)`는 여전히 `Double` 둘을 받아
+    /// 호출부가 리터럴을 넘길 수 있다. 구조적으로 닫으려면 생성자가 `init(canvas:)` 하나뿐인
+    /// `ResizeLimits` 타입으로 시그니처를 바꿔야 한다. **PRD는 그 형태를 설계에 위임했고 AC와
+    /// 충돌하지 않는다** — 이 단위가 팩토리를 고른 것은 **비용 판단**이다(public 시그니처 2개 +
+    /// 호출부 9곳 + 호출부가 0건이라 차단 형태를 검증할 수 없음).
+    /// **`EDITOR-11`은 이 결정을 제약 없이 재검토할 것 — AC가 막은 것이 아니다.**
+    public static func resizeLimits(canvas: Size2) -> (minShortSide: Double, maxLongSide: Double) {
+        (minShortSide: shortSideFloor,
+         maxLongSide: canvas.longSide * canvasLongSideMultiple)
+    }
+
     /// 코너 핸들 드래그 — 비율을 유지하고 대각 반대편 코너를 고정한다.
     public func resized(draggingCorner corner: Corner,
                         to worldPoint: Vec2,
