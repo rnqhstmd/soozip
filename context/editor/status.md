@@ -30,8 +30,8 @@
 | 🟡 | 캔버스 줌 50~400% + 더블탭 fit | §5.9 | a185285 — `CanvasSurface.zoomLimits`(0.5~4.0) · `fitted()`. **더블탭 제스처는 `EDITOR-11`** |
 | 🟡 | 캔버스 팬 (작업 영역까지 + 고무줄) | §5.9 | a185285 — `workArea` · `clampedToWorkArea`. **고무줄 감쇠는 `EDITOR-11`** |
 | ⬜ | 제스처 배타 처리 + 우선순위 표 | §5.9 | `EDITOR-10` — 순수 상태 기계로 |
-| 🟡 | 캔버스 클리핑 + 고스트 렌더 (30%) | §5.10 | `EDITOR-9` — **기하 판정 완료.** `LayerFrame.overlap(canvas:)`가 `.inside`/`.partial`/`.outside` 3분류를 SAT 4축으로 낸다(회전 반영, AABB 근사 금지). **30%는 불투명도이지 판정 임계가 아니다** — 렌더는 `EDITOR-11`. ⚠️ `.partial`은 **양의 넓이를 함의하지 않는다**(한 점 접촉·부동소수 오차 포함) — 렌더 패스 트리거나 사용자 신호로 쓰면 안 된다 |
-| 🟡 | 레이어 중심 작업 영역 제한 | §5.10 | a185285 — **`EDITOR-9`는 `workArea`를 그대로 쓴다.** 팬 한계와 레이어 한계는 같은 사각형이라 두 벌로 갈라지면 조용히 어긋난다 |
+| 🟡 | 캔버스 클리핑 + 고스트 렌더 (30%) | §5.10 | `EDITOR-9`(#17) — **기하 판정 완료.** `LayerFrame.overlap(canvas:)`가 `.inside`/`.partial`/`.outside` 3분류를 SAT 4축으로 낸다(회전 반영, AABB 근사 금지). **30%는 불투명도이지 판정 임계가 아니다** — 렌더는 `EDITOR-11`. ⚠️ `.partial`은 **양의 넓이를 함의하지 않는다**(한 점 접촉·부동소수 오차 포함) — 렌더 패스 트리거나 사용자 신호로 쓰면 안 된다 |
+| 🟡 | 레이어 중심 작업 영역 제한 | §5.10 | `EDITOR-9`(#17) — **`CanvasSurface.clampedLayerCenter(_:)`가 판정을 낸다.** `workArea`를 재계산하지 않고 `clampedToWorkArea`를 그대로 부른다(팬 한계와 레이어 한계는 같은 사각형이라 두 벌로 갈라지면 조용히 어긋난다). 비유한 center는 **캔버스 중심으로 후퇴** — 방어 없이 부르면 `∞`가 `1620`으로 조용히 유한해지고 `NaN`은 통과해 `JSONEncoder`가 던진다. 그래서 `clampedToWorkArea`는 이제 `internal`이다. ⚠️ **배선은 `EDITOR-11`이고 타입이 호출을 강제하지 않는다** — 중심을 바꾸는 모든 경로가 이 함수를 거쳐야 한다 |
 | ✅ | z-order 4종 + 0부터 재정렬 | §5.11 | ca9155f — `bringToFront`/`sendToBack`/`bringForward`/`sendBackward`, 조작 후 z가 0부터 촘촘히 |
 | ⬜ | 가로 모드 툴바 재배치 | §1.2 | `EDITOR-11` |
 | ✅ | 기기 회전 시 줌 배율 재계산 | §6.9 | a185285 — `viewportChanged(to:)`. `zoom`은 fit 대비 배수, `center`는 논리 지점이라 **보정 코드가 필요 없다** |
