@@ -89,7 +89,9 @@ extension LayerFrame {
         // `k = 0` → `(0, NaN)`). 즉 여기서 막아도 **동작이 달라지지 않아 증인을 만들 수 없다.**
         //    ⚠️ 다만 그 결과 **한 축이 0인 레이어는 코너 드래그로 되살아나지 않는다** —
         //    어떤 드래그도 원본 후퇴가 된다. 되살리려면 "0폭 레이어의 비율을 무엇으로 볼
-        //    것인가"라는 제품 결정이 필요하다. `EDITOR-9`/`EDITOR-11`로 넘긴다.
+        //    것인가"라는 제품 결정이 필요하다. `EDITOR-9`가 명시적으로 거절했다(경계
+        //    판정 축에서만 크기 0을 다루고 리사이즈 복구는 크기 축의 제품 결정이라
+        //    범위 밖). 수신자는 `EDITOR-11` 하나다.
         guard worldPoint.x.isFinite, worldPoint.y.isFinite,
               minShortSide.isFinite, maxLongSide.isFinite else { return self }
 
