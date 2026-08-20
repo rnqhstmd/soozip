@@ -114,8 +114,11 @@ private let axisAlignToleranceRadians: Double = 0.0001
 /// 판정이 거짓이다. 이전 구현과 같다 — 회귀 없음.
 ///
 /// **`internal`인 이유**: `public`으로 열면 `RotationSnap` 옆에 임계가 다른
-/// 두 번째 공개 판정이 생겨 호출부에서 혼동을 만든다. 같은 파일의 다른
-/// 상수들이 `internal`인 이유와 같다.
+/// 두 번째 공개 판정이 생겨 호출부에서 혼동을 만든다.
+/// `HandlePlacement`의 `edgeHideThreshold`·`hitSize`가 `internal`인 이유와
+/// 같다 — "열면 호출부가 정책을 재기술하는 가장 짧은 경로가 생긴다".
+/// (이 파일 안에는 비교 대상이 없다. `axisAlignToleranceRadians`와 `AABB`는
+/// `private`이고, 이 파일의 유일한 `internal` 선언이 이 함수 자신이다.)
 ///
 /// **`LayerFrame` 오버로드를 남기지 않은 이유**: 같은 이름 오버로드 둘이
 /// 파일 스코프에 있으면 `others.filter(isAxisAligned)` 같은 함수 참조가

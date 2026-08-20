@@ -258,12 +258,61 @@ private func isClose(_ a: Double, _ b: Double) -> Bool { abs(a - b) < 0.01 }
 @Test func 라디안_진입_판정도_같은_답을_낸다() {
     // 도 단위 흡착_구간에_진입하는_순간_참이다와 동일한 시나리오를 라디안
     // 경로로 확인한다. 20°·17°는 그리드 여유가 커서(5°·2°) 왕복 오차 1
-    // ulp로 판정이 뒤집히지 않는다. **라디안 어댑터가 도 판정으로
-    // 위임하는지 확인하는 유일한 증인이다** — 실측: 라디안 어댑터를
-    // 무력화하는 변이는 이 저장소가 측정한 변이 중 오직 이 테스트만
-    // 죽인다.
+    // ulp로 판정이 뒤집히지 않는다.
+    //
+    // **라디안 진입 어댑터를 `false`로 무력화하는 변이의 유일한 증인이다**
+    // (실측). 반대 방향 — `true`로 고정하는 변이 — 은 이 테스트가 잡지
+    // 못하며 `라디안_진입_판정도_같은_구간에_머무는_동안_재발화하지_않는다`가
+    // 잡는다. 두 테스트가 어댑터의 참·거짓 분기를 나눠 덮는다.
     let previous = RotationSnap.radians(fromDegrees: 20)
     let current = RotationSnap.radians(fromDegrees: 17)
     let entered = RotationSnap.entersSnap(fromRadians: previous, toRadians: current)
     #expect(entered)
+}
+
+@Test func 라디안_경로도_그리드로_흡착된다() {
+    // **라디안 흡착의 성공 분기를 재는 유일한 증인이다.** 이 테스트가 없으면
+    // 앞의 라디안 테스트 넷이 전부 미흡착 입력(1e308·NaN·Infinity·정확히 3°)
+    // 이라 성공 분기의 반환값도 흡착 플래그도 아무도 재지 않는다.
+    //
+    // 실측으로 확인한 생존 변이 셋을 이 테스트가 죽인다:
+    // 흡착 성공 시 되변환을 생략하고 입력을 그대로 반환 / 0을 반환 /
+    // guard를 지워 항상 미흡착. 셋 다 도 경로 테스트로는 잡히지 않았다.
+    // 특히 "0을 반환"은 라디안 API로 스냅할 때마다 레이어가 0°로 붕괴하는
+    // 동작인데 165건이 전부 통과했다.
+    //
+    // 기대값을 `.pi/12` 리터럴이 아니라 `radians(fromDegrees:)`로 만드는
+    // 이유: 리터럴을 쓰면 이 파일에 두 번째 `.pi` 경로가 생긴다. 그 변환기
+    // 자체는 `라디안_경로에서도_정확히_3도는_흡착되지_않는다`가 따로 지킨다.
+    let r = RotationSnap.snapped(radians: RotationSnap.radians(fromDegrees: 13))
+    #expect(r.snapped)
+    #expect(isClose(r.radians, RotationSnap.radians(fromDegrees: 15)))
+}
+
+@Test func 도_경로와_라디안_경로가_같은_판정을_낸다() {
+    // 라디안 표면이 "단위만 옮기는 어댑터"라는 계약을 고정한다 — 규칙 본체는
+    // `snapped(degrees:)`이고 어댑터는 규칙을 갖지 않아야 한다.
+    //
+    // 위 `라디안_경로도_그리드로_흡착된다`와 죽이는 변이가 겹치지만 중복이
+    // 아니다 — 그쪽은 결과가 **어느 값인가**를, 이쪽은 두 표면이 **서로
+    // 어긋나지 않는가**를 잰다. 어댑터에 규칙이 새로 생기는 변이(예: 라디안
+    // 쪽에만 다른 임계를 두는 것)는 이쪽에서만 드러난다.
+    let byDegrees = RotationSnap.snapped(degrees: 13)
+    let byRadians = RotationSnap.snapped(radians: RotationSnap.radians(fromDegrees: 13))
+    #expect(byDegrees.snapped == byRadians.snapped)
+    #expect(isClose(RotationSnap.degrees(fromRadians: byRadians.radians), byDegrees.degrees))
+}
+
+@Test func 라디안_진입_판정도_같은_구간에_머무는_동안_재발화하지_않는다() {
+    // **라디안 진입 판정의 거짓 분기를 재는 유일한 증인이다.** 실측:
+    // `entersSnap(fromRadians:toRadians:)`를 `true`로 고정하는 변이가
+    // 165건을 전부 통과했다 — 유일한 라디안 진입 테스트
+    // `라디안_진입_판정도_같은_답을_낸다`가 참만 단언했기 때문이다.
+    // 배선이 이 어댑터를 쓰면 햅틱이 매 프레임 울리는 동작인데 잡히지 않았다.
+    //
+    // 16°·17°는 둘 다 15°에 흡착되므로 같은 그리드에 머무는 경우다.
+    // 두 값 모두 그리드 여유가 커서(1°·2°) 왕복 오차로 판정이 뒤집히지 않는다.
+    let previous = RotationSnap.radians(fromDegrees: 17)
+    let current = RotationSnap.radians(fromDegrees: 16)
+    #expect(!RotationSnap.entersSnap(fromRadians: previous, toRadians: current))
 }
