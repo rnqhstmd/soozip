@@ -1,0 +1,9 @@
+ .../Sources/SoozipGeometry/RotationSnap.swift      | 278 +++++++++++++++++++++
+ .../Sources/SoozipGeometry/SnapEngine.swift        | 104 +++++++-
+ .../SoozipGeometryTests/RotationSnapTests.swift    | 269 ++++++++++++++++++++
+ .../SoozipGeometryTests/SnapEngineTests.swift      |  51 ++++
+ context/editor/status.md                           |   5 +-
+ docs/plans/2026-08-11-00-tdd-roadmap-v1.md         |   6 +-
+ 6 files changed, 704 insertions(+), 9 deletions(-)
+---
+500줄 초과라 요약만 싣는다. 변경된 파일을 Read 도구로 직접 확인하라.

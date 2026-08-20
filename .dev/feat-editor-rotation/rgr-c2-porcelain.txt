@@ -1,0 +1,5 @@
+ M context/editor/status.md
+ M docs/plans/2026-08-11-00-tdd-roadmap-v1.md
+?? .dev/feat-editor-rotation/
+?? Packages/SoozipGeometry/Sources/SoozipGeometry/RotationSnap.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/RotationSnapTests.swift
