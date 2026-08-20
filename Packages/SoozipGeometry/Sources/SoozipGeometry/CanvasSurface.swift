@@ -73,6 +73,11 @@ public struct CanvasSurface: Equatable, Sendable {
     /// `EDITOR-9`(레이어 경계)가 이 사각형을 다시 정의하지 않도록 공개한다.
     /// 두 벌로 갈라지면 한쪽만 바뀌었을 때 "팬으로 못 닿는 곳에 레이어가 놓이거나,
     /// 레이어가 못 가는 곳까지 팬되는" 어긋남이 조용히 생긴다.
+    ///
+    /// `EDITOR-9`가 실제로 그렇게 했다 — `clampedLayerCenter(_:)`가 이 사각형을
+    /// 재계산하지 않고 `clampedToWorkArea(_:)`를 그대로 부른다. **읽기 전용
+    /// 기하 사실이라 `public`을 유지한다**(`EDITOR-11`이 작업 영역 경계를 그릴 때
+    /// 필요하다). 좁힌 것은 가드가 없는 변환 함수 하나뿐이다.
     public var workArea: (min: Vec2, max: Vec2) {
         let c = canvasCenter
         return (Vec2(x: c.x - canvas.width, y: c.y - canvas.height),
@@ -81,7 +86,26 @@ public struct CanvasSurface: Equatable, Sendable {
 
     /// 작업 영역 안으로 자른다. **기준은 언제나 캔버스 중심이다** — 현재 `center`를
     /// 기준으로 삼으면 팬할 때마다 기준이 따라가 무한히 벗어난다.
-    public func clampedToWorkArea(_ p: Vec2) -> Vec2 {
+    ///
+    /// ⚠️ **레이어 중심에는 이것을 쓰지 마라. `clampedLayerCenter(_:)`를 거쳐라.**
+    /// 이 함수에는 비유한 방어가 없어서 두 비유한 종류가 **서로 다르게** 처리된다
+    /// (실측): `min(max(∞, −540), 1620)`은 **`1620`** — 그럴듯한 좌표라 아무도
+    /// 눈치채지 못하고, `min(max(NaN, …), …)`은 **`NaN` 그대로 통과**한다. `NaN`이
+    /// 레이어 `center`에 앉으면 `JSONEncoder`가 던져 **문서 저장 자체가 실패한다**
+    /// (`EDITOR-8`이 `rotation` 축에서 실제로 발견해 제거한 실패와 같은 형태).
+    ///
+    /// **`internal`인 이유가 이것이다** (`EDITOR-9`에서 `public`을 뗐다). 두 클램프는
+    /// 같은 타입에 같은 시그니처(`Vec2 → Vec2`)를 갖고 이름도 인접해 자동완성에
+    /// 나란히 뜬다. 공개 표면에 둘 다 있으면 배선이 잘못 고를 수 있는데, 그때
+    /// **`EDITOR-9`의 테스트 22건은 전부 초록이다** — 그 테스트들은 함수를 직접
+    /// 부르는 단위 테스트라 호출부가 무엇을 고르는지 보지 못한다. 그래서 주석이
+    /// 아니라 컴파일러가 막게 했다 (`ResizeAnchor`가 `shortSideFloor`/`minShortSide`
+    /// 이름을 갈라 막은 것과 같은 대응).
+    ///
+    /// 패키지 안에서는 `centered(on:)`(팬)과 `clampedLayerCenter(_:)`(레이어 중심)
+    /// 둘만 부른다. 팬 경로는 `centered(on:)`이 진입부에서 `isFinite`를 이미
+    /// 거르므로 방어 부재에 닿지 않는다.
+    func clampedToWorkArea(_ p: Vec2) -> Vec2 {
         let area = workArea
         return Vec2(x: min(max(p.x, area.min.x), area.max.x),
                     y: min(max(p.y, area.min.y), area.max.y))

@@ -1,0 +1,5 @@
+ M docs/plans/2026-08-11-00-tdd-roadmap-v1.md
+?? .dev/feat-editor-boundary/
+?? Packages/SoozipGeometry/Sources/SoozipGeometry/LayerBoundary.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerBoundaryTests.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerCenterClampTests.swift

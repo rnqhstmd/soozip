@@ -1,0 +1,18 @@
+ .../Sources/SoozipGeometry/CanvasSurface.swift     |  26 ++-
+ .../Sources/SoozipGeometry/LayerBoundary.swift     | 240 +++++++++++++++++++++
+ .../Sources/SoozipGeometry/LayerCenterClamp.swift  |  71 ++++++
+ .../Sources/SoozipGeometry/ResizeAnchor.swift      |   4 +-
+ .../SoozipGeometryTests/LayerBoundaryTests.swift   | 138 ++++++++++++
+ .../LayerCenterClampTests.swift                    |  81 +++++++
+ context/editor/status.md                           |   2 +-
+ docs/plans/2026-08-11-00-tdd-roadmap-v1.md         |  21 +-
+ 8 files changed, 576 insertions(+), 7 deletions(-)
+---
+위는 요약입니다(전체 diff 600줄+). 변경된 코드 파일 5개를 Read 도구로 직접 확인하세요:
+  Packages/SoozipGeometry/Sources/SoozipGeometry/LayerBoundary.swift      신규 — CanvasOverlap + LayerFrame.overlap(canvas:) + private Interval
+  Packages/SoozipGeometry/Sources/SoozipGeometry/LayerCenterClamp.swift   신규 — CanvasSurface.clampedLayerCenter(_:)
+  Packages/SoozipGeometry/Sources/SoozipGeometry/CanvasSurface.swift      수정 — clampedToWorkArea 가시성 public 제거 + doc
+  Packages/SoozipGeometry/Sources/SoozipGeometry/ResizeAnchor.swift       수정 — 인계 주석만 (실행 코드 0줄)
+  Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerBoundaryTests.swift     신규 16 @Test
+  Packages/SoozipGeometry/Tests/SoozipGeometryTests/LayerCenterClampTests.swift  신규 6 @Test
+  (그 외: docs/plans 로드맵 총계 정정, context/editor/status.md 갱신 — 코드 아님)
