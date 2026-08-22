@@ -77,7 +77,17 @@ public struct CanvasSurface: Equatable, Sendable {
     /// `EDITOR-9`가 실제로 그렇게 했다 — `clampedLayerCenter(_:)`가 이 사각형을
     /// 재계산하지 않고 `clampedToWorkArea(_:)`를 그대로 부른다. **읽기 전용
     /// 기하 사실이라 `public`을 유지한다**(`EDITOR-11`이 작업 영역 경계를 그릴 때
-    /// 필요하다). 좁힌 것은 가드가 없는 변환 함수 하나뿐이다.
+    /// 필요하다). 좁힌 것은 가드가 없는 변환 함수 **둘**이다 —
+    /// `clampedToWorkArea`(`EDITOR-9`)와 `clampedLayerCenter`(`EDITOR-10`).
+    ///
+    /// ⚠️ **`workArea`는 `public`으로 남는다**(`EDITOR-11`이 작업 영역 경계를
+    /// 그려야 한다). 그래서 호출부가 `min(max(p.x, s.workArea.min.x),
+    /// s.workArea.max.x)` **2줄로 클램프를 재기술할 수 있고, 그 2줄에는 비유한
+    /// 가드가 없다.** 미리 잘려 `1620`이 된 `∞`를 `ClampedLayerCenter`에 넣으면
+    /// `isFinite` 가드가 발동하지 않아 결과가 `(1620, …)`가 된다 — 캔버스 중심
+    /// 후퇴 계약(`무한대_중심으로_옮기면_프레임_중심이_캔버스_중심으로_후퇴한다`)이
+    /// **공개 표면만으로** 깨진다. 이 경로를 막는 것은 컴파일러가 아니라 이
+    /// 경고문뿐이다.
     public var workArea: (min: Vec2, max: Vec2) {
         let c = canvasCenter
         return (Vec2(x: c.x - canvas.width, y: c.y - canvas.height),

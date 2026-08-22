@@ -120,6 +120,28 @@ extension LayerFrame {
         let newCenterLocal = Vec2(x: anchorLocal.x + corner.sign.x * newW / 2,
                                   y: anchorLocal.y + corner.sign.y * newH / 2)
 
+        // ⚠️ **인계 — 이 `center`는 게이트를 지나지 않은 중간값이다.**
+        // `EDITOR-10`이 세운 게이트(`ClampedLayerCenter` → `LayerFrame.placed(at:)` /
+        // `LayerTransform.placed(at:)` / `LayerStore.place(_:at:)`)를 거치지 않는다 —
+        // 아래 `center`는 `LayerFrame`의 생성자에 곧바로 들어간다.
+        //
+        // **오늘 이것이 저장 상태가 될 수 없는 이유는 게이트가 막아서가 아니다.**
+        // `LayerFrame → LayerTransform` 역변환이 저장소에 없기 때문이다 — 있는
+        // 것은 단방향 `LayerTransform.frame(baseSize:)`뿐이라, 이 리사이즈 결과
+        // `LayerFrame`을 저장소에 되돌려 쓸 경로 자체가 존재하지 않는다.
+        // **`EDITOR-11`이 역변환을 만드는 날 이 근거는 사라진다** — 그날부터는
+        // 이 `center`가 저장 상태로 직행할 수 있는데, 게이트는 여전히 이 경로를
+        // 지나지 않는다.
+        //
+        // 그날이 와도 **절반만 닫힌다.** 중심은 `x`/`y`(`LayerTransform`, 모듈
+        // 밖 닫힘)를 지나지만, 크기는 `scale`(`Layer.swift`, `public var` — 열림)을
+        // 지난다. 리사이즈 저장 경로의 절반에는 게이트가 없다.
+        //
+        // **고정점 유지 vs 작업 영역 클램프의 충돌은 아직 결정되지 않은
+        // 정책이다.** v4 §5.7은 대각 고정점 유지를, §5.10은 작업 영역 클램프를
+        // 각각 요구한다 — 리사이즈 결과 중심이 작업 영역 밖이면 둘 중 하나만
+        // 만족시킬 수 있다(고정점을 포기하고 클램프할지, 클램프를 포기하고
+        // 고정점을 지킬지). 수신자는 `EDITOR-11`.
         var result = LayerFrame(center: toWorld(newCenterLocal),
                                 size: Size2(width: newW, height: newH),
                                 rotation: rotation)
@@ -243,6 +265,9 @@ extension LayerFrame {
         case .top:    shiftLocal = Vec2(x: 0, y: -deltaH / 2)
         }
 
+        // ⚠️ **이 `center`도 게이트를 지나지 않은 중간값이다** — 위
+        // `resized(draggingCorner:)`의 인계 기록(게이트 미경유·저장 경로 부재·
+        // scale 축 미폐쇄·고정점/클램프 정책 충돌) 참조. 이 함수도 같은 상태다.
         let result = LayerFrame(center: toWorld(shiftLocal),
                                 size: Size2(width: newW, height: newH),
                                 rotation: rotation)

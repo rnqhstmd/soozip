@@ -34,8 +34,21 @@ public struct ToneFilter: Codable, Equatable, Sendable {
 /// 좌표는 논리좌표계(폭 1080 고정)이며 **캔버스 밖 값도 유효하다** — 레이어는
 /// 캔버스 경계를 넘어갈 수 있고 경계에서 잘려 보인다(v4 §5.10).
 public struct LayerTransform: Codable, Equatable, Sendable {
-    public var x: Double
-    public var y: Double
+    /// **`EDITOR-10`이 세터를 모듈 밖에 닫았다.** 모듈 밖에서
+    /// `transform.x = p.x`는 `'x' setter is inaccessible`로 컴파일
+    /// 실패한다. 그러나 `SoozipLayout` 모듈 **안**에서는 그대로
+    /// 컴파일된다 — 특히 `LayerStore`는 이 모듈 안이고 `storage`가
+    /// `private`이라, 그 파일 안에서 `storage[i].layer.transform.x = …`를
+    /// 쓰는 것을 아무것도 막지 못한다. 그리고 구성 축(`LayerTransform(x:y:)`
+    /// · `Layer.transform` 통째 대입)은 모듈 밖에서도 열려 있다. 닫힌
+    /// 것은 이동 축(모듈 밖 setter) 하나뿐이다 — `LayerPlacement.swift`의
+    /// `placed(at:)`가 유일한 모듈 밖 이동 경로여야 한다는 계약이다.
+    ///
+    /// **`scale`을 열어 두는 이유.** 크기 축에는 강제할 계약이 없다.
+    /// 리사이즈 저장 경로가 생기면 중심은 `x`/`y`(닫힘)를 지나지만
+    /// 크기는 `scale`(열림)을 지난다. 수신자는 `EDITOR-11`.
+    public internal(set) var x: Double
+    public internal(set) var y: Double
     public var scale: Double
     public var rotation: Double     // 라디안
     public var opacity: Double

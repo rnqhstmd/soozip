@@ -51,7 +51,27 @@ public enum Edge: CaseIterable, Hashable, Sendable {
 
 /// 레이어의 기하 상태. 논리좌표계(폭 1080 고정)에서만 쓴다.
 public struct LayerFrame: Equatable, Sendable {
-    public var center: Vec2
+    /// **`EDITOR-10`이 세터를 모듈 밖에 닫았다.** `size`·`rotation`은
+    /// 계약이 없어 그대로 열어 두지만(강제할 상한/보존 규칙이 없다 —
+    /// `resizeLimits`는 여전히 호출부가 리터럴로 우회할 수 있는 상태다,
+    /// `ResizeAnchor.swift:44-49`, 수신자 `EDITOR-11`), `center`에는
+    /// `LayerFrame.placed(at:)`(`ClampedLayerCenter.swift`)가 유일한
+    /// 모듈 밖 이동 경로여야 한다는 계약이 있다.
+    ///
+    /// **`private(set)`이 아니라 `internal(set)`인 이유.** `ResizeAnchor.swift`
+    /// 의 `extension LayerFrame`(다른 파일)이 `result.center.x += …`로
+    /// 부분 대입을 한다. Swift의 `private`은 "같은 파일"까지만 뚫려 있어
+    /// `private(set)`이면 그 다른 파일이 컴파일되지 않는다. 막고 싶은
+    /// 것은 모듈 밖이지 모듈 안이 아니므로 `internal(set)`이다.
+    ///
+    /// **모듈 밖/안의 비대칭(실측).** 모듈 밖에서는 `f.center = p`와
+    /// `f.center.x += 99999`가 둘 다 `'center' setter is inaccessible`로
+    /// 컴파일 실패한다. 모듈 안에서는(`SoozipGeometry` 내부) 부분 대입이
+    /// 그대로 컴파일된다. 그리고 `LayerFrame(center: p, size: f.size,
+    /// rotation: f.rotation)`처럼 **`init`으로 우회하는 구성 축은 모듈
+    /// 밖에서도 열려 있다** — `(99999, 99999)`가 그대로 산출된다. 이
+    /// 선언이 닫는 것은 이동 축(세터) 하나뿐이다.
+    public internal(set) var center: Vec2
     public var size: Size2
     public var rotation: Double   // 라디안
 
