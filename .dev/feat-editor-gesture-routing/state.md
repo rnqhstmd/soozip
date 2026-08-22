@@ -20,7 +20,7 @@ config-setup-attempts: 0
 auto-stashed: false
 warnings-baseline: 1
 test-baseline: "SoozipGeometry 190 · SoozipLayout 95 · SoozipDraft 26 · 앱 169 = 480, 전부 통과"
-current-step: "verify 게이트"
+current-step: "완료 (PR #18)"
 phases:
   setup: completed
   requirements: completed
@@ -151,7 +151,7 @@ execution-log:
     agent: refactor-coder (T7)
     result: "소스 원장 갱신 — 순번 참조 11곳/9개 파일 제거(오케스트레이터가 '8개 파일'로 잘못 셌고 에이전트가 정정), CanvasSurface:80 스테일 원장 정정('좁힌 것은 하나뿐'→'둘'), workArea 재기술 경고 추가, ResizeAnchor 2곳에 인계 기록(한 곳에 본문·다른 곳에 포인터 — 같은 규칙 두 벌 방지)"
   - phase: implement
-    result: "오케스트레이터 실측 감사 — 추적 파일 실행 코드 변경 전수 15줄, 전부 설계와 1:1 대응. CanvasSurface·ResizeAnchor는 0줄(주석 전용 확인). 최종 게이트 198/102/26/172 + Release 빌드 성공 + 경고 0"
+    result: "오케스트레이터 실측 감사 — 기존 파일 실행 코드 변경 **21 diff 줄**(LayerCenterClamp 2·LayerFrame 2·Layer 4·LayerStore 6·SpikeMenu 7), 전부 설계와 1:1 대응. CanvasSurface·ResizeAnchor·SoozipApp은 0줄(주석 전용). ⚠️ 이 줄은 처음 '15줄'로 잘못 적었다 — 인수 검증 직전 diff 재수집에서 신규 파일·삭제분을 포함해 재측정하며 발견하고 정정했다(신규 프로덕션 58 · 신규 테스트 204 · 삭제 −100은 별도). 최종 게이트 198/102/26/172 + Release 빌드 성공 + 경고 0"
   - phase: implement
     result: "**절차상 함정 발견** — SoozipTests/LayerCenterGateBoundaryTests.swift가 xcodegen generate 이전에 만들어져 pbxproj에 없었고, 첫 RED 검증에서 앱 타깃이 169건 통과로 나왔다(증인이 '실패'가 아니라 '부재'). 재생성 후 앱 타깃이 정상적으로 컴파일 실패했고 GREEN에서 172건이 됐다. **삭제는 컴파일 실패로 즉시 드러나지만 추가는 조용히 누락되므로 방향이 비대칭이다** — Soozip/·SoozipTests/ 신규 파일은 xcodegen generate 없이는 게이트에 참여하지 않는다"
   - phase: implement
@@ -168,4 +168,23 @@ execution-log:
     result: "경고 baseline 측정 — test 0건 + build 1건 = 1. build 쪽 1건은 appintentsmetadataprocessor 툴체인 경고(변경 파일과 무관). EDITOR-9는 test만 재서 baseline 0으로 기록했고 verify에서 이 경고가 신규로 오인됐다 — trust-ledger 지시대로 이번엔 test·build 둘 다 측정했다"
   - phase: requirements
     result: "오케스트레이터 판정으로 AC-18 삭제(BR-4로 흡수) — 입력 타입에 좌표가 없어 테스트가 AC-1과 동일 호출이 되는 중복 단언. AC 18→17. 사용자 승인 완료"
+  - phase: review
+    agent: quality-reviewer (1차)
+    result: "FAIL — Critical 0 · Important 6 · Minor 7, 전부 [동작불변]. 사용자가 13건 전부 수정 선택"
+  - phase: review
+    agent: security-auditor
+    result: "CRITICAL 0 · HIGH 1 · MEDIUM 7. HIGH = LayoutDocument 캔버스 무검증(이 단위가 도달 가능하게 만든 이월 결함). 신규 발견 = S1 삭제로 SnapEngine 프로덕션 호출자 0건. 감사자의 git 인용 1건은 stale 스냅샷 오독으로 오케스트레이터가 정정"
+  - phase: review
+    agent: quality-reviewer (2차 범위 축소 재검)
+    result: "FAIL — 새 문제 2건. **정정이 새 모순을 만들었고 둘 다 오케스트레이터가 원인**: (1) '단일 출처다' 선언이 거짓(목록 4벌 중 셋을 오케스트레이터가 작성) (2) profile/status.md 본문만 고치고 헤더 방치. 권고 ①로 해소 후 사본 0건 확인"
+  - phase: complete
+    gate: verify
+    result: "PASS — 498 pass/0 fail, 빌드 성공, 경고 1(baseline 1, 신규 0). 지문 ab07565:02dcbe6a6285. 로드맵 문서 수정 후 1회 재실행"
+  - phase: complete
+    agent: product-owner
+    result: "ACCEPT — FR-1~4·BR-1~7 충족. BR-7이 지정한 공개 API 표면 4항목 코드로 직접 확인. **FR-5는 부분 충족** 판정 + 부채 회계를 제품 결정으로 상신"
+  - phase: complete
+    result: "사용자 확정 — 6번 이월 부채 종료·카운터 리셋, 남은 넷은 별개 제약으로 분리. PRD FR-5 문면은 사후 수정하지 않고 부분 충족으로 남김"
+  - phase: complete
+    result: "커밋 3건(feat e0aec5d · docs 33c3dcd · docs 41c22be) + PR #18. 저장소 관례대로 feat/docs 분할, Co-Authored-By 유지(스킬 금지 규칙보다 harness 지침·저장소 이력 우선)"
 ```
