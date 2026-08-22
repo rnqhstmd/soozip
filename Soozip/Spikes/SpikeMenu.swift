@@ -22,26 +22,25 @@ extension View {
 /// Phase 0 스파이크 진입점. **DEBUG 빌드에만 존재한다.**
 ///
 /// 앱 루트가 모음집 화면이 되면서 프로브가 도달 불가능해졌는데, 로드맵은
-/// "S1·S2 측정이 끝나기 전에는 지우지 않는다"고 못박았다 — **측정하려면 실행
+/// "측정이 끝나기 전에는 지우지 않는다"고 못박았다 — **측정하려면 실행
 /// 가능해야 한다.** 그렇다고 릴리스 빌드에 프로브가 실리면 안 된다.
 ///
-/// S1·S2 측정이 끝나면 이 파일과 `S1_GestureProbe`·`S2_CloudKitProbe`를 함께 지운다.
+/// **S1은 `EDITOR-10`에서 지웠다.** 측정은 끝났고(`docs/reports/2026-08-10-spike-results.md`),
+/// 같은 단위가 `LayerFrame.center`를 `internal(set)`으로 좁히면서 프로브의
+/// `frames[s].center = …`가 모듈 밖 대입이 되어 컴파일 불가가 됐다. 고쳐 살리려면
+/// `CanvasSurface` 배선을 미리 해야 하는데 그것은 `EDITOR-11`의 일이고 그 코드에는
+/// 테스트가 없다. **S2 측정이 끝나면 이 파일과 `S2_CloudKitProbe`를 함께 지운다.**
 struct SpikeMenu: View {
 
-    @State private var showingS1 = false
     @State private var showingS2 = false
 
     var body: some View {
         Menu {
-            Button("S1 제스처 프로브") { showingS1 = true }
             Button("S2 CloudKit 프로브") { showingS2 = true }
         } label: {
             Image(systemName: "wrench.and.screwdriver")
         }
         .accessibilityLabel("스파이크 (개발용)")
-        .fullScreenCover(isPresented: $showingS1) {
-            spikeSheet { S1_GestureProbe() }
-        }
         .fullScreenCover(isPresented: $showingS2) {
             spikeSheet { S2_CloudKitProbe() }
         }
@@ -53,7 +52,7 @@ struct SpikeMenu: View {
             content()
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("닫기") { showingS1 = false; showingS2 = false }
+                        Button("닫기") { showingS2 = false }
                     }
                 }
         }

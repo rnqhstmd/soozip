@@ -9,8 +9,10 @@ struct SoozipApp: App {
             // Phase 6부터 여기가 정식 첫 화면이다.
             //
             // 스파이크는 지운 것이 아니라 `#if DEBUG` 진입점(`SpikeMenu`)으로
-            // 옮겼다 — 로드맵이 S1·S2 측정 전 삭제를 금지했고, 측정하려면 실행
-            // 가능해야 하며, 릴리스 빌드에 실려서도 안 되기 때문이다.
+            // 옮겼다 — 로드맵이 측정 전 삭제를 금지했고, 측정하려면 실행
+            // 가능해야 하며, 릴리스 빌드에 실려서도 안 되기 때문이다. **S1은
+            // `EDITOR-10`이 측정을 마치고 이미 지웠다** — 지금 남은 것은
+            // S2뿐이다(`SpikeMenu.swift` 참고).
             CollectionHomeView()
                 .pruneOrphanedDraftsOnLaunch()
         }

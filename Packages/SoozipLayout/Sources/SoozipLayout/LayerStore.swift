@@ -1,4 +1,5 @@
 import Foundation
+import SoozipGeometry
 
 /// 삽입 거부 사유 (v4 §5.13).
 ///
@@ -161,6 +162,40 @@ public struct LayerStore: Equatable, Sendable {
         if selectedID == id {
             selectedID = nil
         }
+    }
+
+    // MARK: - 배치 (EDITOR-10)
+
+    /// 저장된 레이어의 중심을 옮기는 **유일한 공개 경로**다.
+    ///
+    /// 이름이 `move`가 아닌 이유: 이 타입에는 이미 z-order 내부 구현으로
+    /// `private mutating func move(_:to:)`가 있다. 공개 API 이름도 move로
+    /// 지으면 `move(id, to: ClampedLayerCenter)`가 그 내부 오버로드와
+    /// 인자 타입만 다른 형제로 자동완성에 나란히 뜬다 — 이름을 갈라 그
+    /// 혼동을 없앤다.
+    ///
+    /// **없는 식별자는 크래시 없이 조용히 무시한다.** `move(_:to:)`·
+    /// `remove(_:)`와 같은 관례이고, PRD BR-6("레이어 라우팅 결과는 대상
+    /// 존재를 보장하지 않는다 — 없으면 크래시 없이 조용히 무시")과 정확히
+    /// 같은 계약이다. 같은 이유로 `Bool`을 반환하지 않는다 — 반환하면
+    /// 호출부가 성공·실패로 분기하게 되는데, BR-6이 요구하는 것은 분기가
+    /// 아니라 무시다.
+    ///
+    /// `x`·`y`를 여기서 직접 대입하지 않고 `transform.placed(at:)`에
+    /// 위임한다 — 직접 쓰면 좌표를 바꾸는 규칙이 두 벌이 되고, 그러면
+    /// 한쪽만 나머지 네 필드(z 등)를 보존하는 사고가 난다.
+    ///
+    /// ⚠️ 이 함수는 봉쇄가 아니라 선점이다. `storage`가 `private`인 것은
+    /// **모듈 밖에서** `entry.layer.transform.x = ...`를 막을 뿐이다 —
+    /// `SoozipLayout` 모듈 **안**에서는 이 파일이 여전히 `storage`에 직접
+    /// 접근할 수 있고, 그 사실 자체는 이 함수가 있어도 바뀌지 않는다. 이
+    /// 함수가 하는 일은 `EDITOR-11`이 레이어를 옮길 때 없는 경로를 새로
+    /// 발명하는 대신 있는 경로(`place`)를 쓰게 하는 것뿐이다 — 모듈 밖은
+    /// 닫혀 있고, 모듈 안에는 옳은 경로가 하나 놓였을 뿐이다.
+    public mutating func place(_ id: UUID, at center: ClampedLayerCenter) {
+        guard let index = storage.firstIndex(where: { $0.id == id }) else { return }
+        let placedTransform = storage[index].layer.transform.placed(at: center)
+        storage[index].layer.transform = placedTransform
     }
 
     // MARK: - z-order (v4 §5.11)

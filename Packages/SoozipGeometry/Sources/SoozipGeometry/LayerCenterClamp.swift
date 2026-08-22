@@ -32,11 +32,19 @@ extension CanvasSurface {
     /// 작성 자체가 불가능하다 — 클램프가 중심에만 적용된다는 규칙을
     /// 타입이 강제한다.
     ///
-    /// ⚠️ **`EDITOR-11` 인계**: 레이어 중심을 바꾸는 모든 경로(이동·
-    /// 리사이즈로 인한 중심 이동·회전·생성·복제)가 이 함수를 거쳐야
-    /// 하는데, 타입이 그것을 강제하지 않는다. 안 거치면 레이어가 작업
-    /// 영역 밖으로 나가 줌 아웃으로도 볼 수 없어 영영 잡을 수 없게
-    /// 된다.
+    /// ⚠️ **`EDITOR-11` 인계 (`EDITOR-10`이 좁힘)**: 레이어 중심을 바꾸는
+    /// 경로와 각각의 상태는 `context/editor/architecture.md`의 「중심을
+    /// 바꾸는 경로」 표가 단일 출처다 — `EDITOR-10`이 닫은 것은 그중 **이동
+    /// 축(모듈 밖 세터) 하나뿐이며**, 여기에 목록을 복제하지 않는다(복제하면
+    /// 갈라진다). `LayerFrame.center`가 `internal(set)`이 되어 모듈 밖에서는
+    /// `frame.center = …`도 부분 대입도 컴파일되지 않고, 이 함수 자신도
+    /// `internal`로 좁혀 모듈 밖에서 직접 부를 수 없다. 이 함수를 거치지
+    /// 않는 경로가 여전히 있다는 사실만 국소적으로 남긴다 —
+    /// `LayerFrame.init`은 `center`를 검증 없이 그대로 받고,
+    /// `ResizeAnchor`의 리사이즈 경로도 이 함수를 거치지 않는다(둘 다 예시일
+    /// 뿐, 전체 목록은 위 표를 본다). 그리고 이 함수가 `internal`이 되었다는 것 자체가
+    /// `SoozipGeometry` 모듈 내부(선언 모듈 안)에서는 여전히 아무 제약 없이
+    /// 호출 가능하다는 뜻이다 — "게이트가 완료됐다"로 읽으면 안 된다.
     ///
     /// **입력 `p`의 유한성만 검사하고 `canvas` 유효성은 검사하지 않는다
     /// — 자매 함수 `overlap(canvas:)`와의 이 비대칭은 의도다.**
@@ -64,7 +72,12 @@ extension CanvasSurface {
     /// | 비유한 가드 제거(`clampedToWorkArea` 직접 호출) | `무한대_중심은_경계로_잘리지_않고_캔버스_중심으로_후퇴한다` · `NaN_중심도_무한대와_같은_캔버스_중심을_낸다` |
     /// | 경계에 `zoom`/`scale` 곱하기 | `클램프_결과는_줌과_뷰포트에_무관하다` |
     /// | 무조건 `canvasCenter`로 밀기 | `작업_영역_경계에_있는_중심은_안쪽으로_당겨지지_않는다` · `이미_작업_영역_안인_중심은_두_번_클램프해도_그대로다` |
-    public func clampedLayerCenter(_ p: Vec2) -> Vec2 {
+    /// **`EDITOR-10`이 `public`을 뗐다** — `EDITOR-9`가
+    /// `clampedToWorkArea`에 한 것과 같은 조치다(`CanvasSurface.clampedToWorkArea`
+    /// doc의 "internal인 이유" 참고). 이 값을 감싸는 `ClampedLayerCenter`가
+    /// 이제 유일한 공개 경로다. 기존 호출자는 `@testable` 테스트뿐이라
+    /// 비용 0이다.
+    func clampedLayerCenter(_ p: Vec2) -> Vec2 {
         guard p.x.isFinite, p.y.isFinite else { return canvasCenter }
         return clampedToWorkArea(p)
     }
