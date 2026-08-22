@@ -1,0 +1,31 @@
+=== SPM 패키지 ===
+SoozipGeometry   FAILED
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:44:18: error: cannot find 'ClampedLayerCenter' in scope
+   |              `- error: cannot find 'ClampedLayerCenter' in scope
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:45:36: error: value of type 'LayerFrame' has no member 'placed'
+   |                      `- error: value of type 'LayerFrame' has no member 'placed'
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:53:18: error: cannot find 'ClampedLayerCenter' in scope
+   |              `- error: cannot find 'ClampedLayerCenter' in scope
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:54:36: error: value of type 'LayerFrame' has no member 'placed'
+   |                      `- error: value of type 'LayerFrame' has no member 'placed'
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:63:18: error: cannot find 'ClampedLayerCenter' in scope
+   |              `- error: cannot find 'ClampedLayerCenter' in scope
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:64:36: error: value of type 'LayerFrame' has no member 'placed'
+   |                      `- error: value of type 'LayerFrame' has no member 'placed'
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:75:18: error: cannot find 'ClampedLayerCenter' in scope
+   |              `- error: cannot find 'ClampedLayerCenter' in scope
+/Users/bonseung/projects/soozip/Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift:76:25: error: value of type 'LayerFrame' has no member 'placed'
+   |                 `- error: value of type 'LayerFrame' has no member 'placed'
+error: fatalError
+SoozipLayout     Test run with 95 tests in 0 suites passed
+SoozipDraft      Test run with 26 tests in 0 suites passed
+
+=== 앱 타깃 ===
+destination: platform=iOS Simulator,name=iPhone 17 Pro
+Test run with 169 tests in 0 suites passed
+
+=== 릴리스 빌드 ===
+빌드 성공
+
+테스트 실패
+EXIT=1

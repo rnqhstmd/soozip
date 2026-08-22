@@ -1,0 +1,8 @@
+ M Soozip.xcodeproj/project.pbxproj
+D  Soozip/Spikes/S1_GestureProbe.swift
+ M Soozip/Spikes/SpikeMenu.swift
+?? .dev/feat-editor-gesture-routing/
+?? Packages/SoozipGeometry/Sources/SoozipGeometry/GestureRouter.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/ClampedLayerCenterTests.swift
+?? Packages/SoozipGeometry/Tests/SoozipGeometryTests/GestureRouterTests.swift
+?? SoozipTests/LayerCenterGateBoundaryTests.swift
